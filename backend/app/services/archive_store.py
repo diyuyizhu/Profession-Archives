@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from backend.app.db import db_session, dumps_json, row_to_dict
-from backend.app.schemas import ApplicationCreate, ProfileCreate
+from backend.app.schemas import ApplicationCreate, ApplicationStatusUpdate, ProfileCreate, ProfileUpdate
 
 
 def _read_profile(connection, profile_id: int) -> dict[str, Any] | None:
@@ -115,6 +115,39 @@ def get_profile(profile_id: int) -> dict[str, Any] | None:
         return _read_profile(connection, profile_id)
 
 
+def update_profile(profile_id: int, payload: ProfileUpdate) -> dict[str, Any] | None:
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        return get_profile(profile_id)
+
+    with db_session() as connection:
+        existing = connection.execute("SELECT * FROM profiles WHERE id = ?", (profile_id,)).fetchone()
+        if existing is None:
+            return None
+
+        connection.execute(
+            """
+            UPDATE profiles
+            SET full_name = COALESCE(?, full_name),
+                headline = COALESCE(?, headline),
+                email = COALESCE(?, email),
+                phone = COALESCE(?, phone),
+                summary = COALESCE(?, summary),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                updates.get("full_name"),
+                updates.get("headline"),
+                updates.get("email"),
+                updates.get("phone"),
+                updates.get("summary"),
+                profile_id,
+            ),
+        )
+        return _read_profile(connection, profile_id)
+
+
 def create_application(payload: ApplicationCreate) -> dict[str, Any]:
     with db_session() as connection:
         cursor = connection.execute(
@@ -148,3 +181,17 @@ def list_applications(profile_id: int | None = None) -> list[dict[str, Any]]:
                 (profile_id,),
             ).fetchall()
         return [dict(row) for row in rows]
+
+
+def update_application_status(application_id: int, payload: ApplicationStatusUpdate) -> dict[str, Any] | None:
+    with db_session() as connection:
+        connection.execute(
+            """
+            UPDATE applications
+            SET status = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (payload.status, application_id),
+        )
+        application = connection.execute("SELECT * FROM applications WHERE id = ?", (application_id,)).fetchone()
+        return row_to_dict(application)

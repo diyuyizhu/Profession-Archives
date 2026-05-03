@@ -50,6 +50,14 @@ class ProfileCreate(BaseModel):
     projects: list[ProjectCreate] = Field(default_factory=list)
 
 
+class ProfileUpdate(BaseModel):
+    full_name: str | None = None
+    headline: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    summary: str | None = None
+
+
 class ProfileRead(BaseModel):
     id: int
     full_name: str
@@ -70,6 +78,10 @@ class ApplicationCreate(BaseModel):
     job_url: str | None = None
     snapshot_path: str | None = None
     notes: str | None = None
+
+
+class ApplicationStatusUpdate(BaseModel):
+    status: str
 
 
 class ApplicationRead(BaseModel):

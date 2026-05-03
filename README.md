@@ -23,9 +23,29 @@ Profession Archives - 一个基于 AI 的本地化职业资产管理与简历构
 
 ### 本地启动
 
+如果你只跑 `desktop/src/main.ts`，那只是前端页面，不是桌面窗口。要看到真正的桌面壳，需要启动 Tauri。
+
+如果你想全程尽量绿色版，建议把便携工具放到仓库里的 `tools/`：
+
+- `tools/node/`：便携版 Node.js
+- `tools/rust/`：便携版 Rust/Cargo
+
+然后直接双击仓库根目录的 `run-green.bat`。
+
+`run-green.bat` 会优先使用系统里已经安装好的 Node.js；如果系统里没有 Node.js，才会在你确认后下载仓库内的便携版到 `tools/node/`。Rust 仍然使用仓库内的便携工具。
+
 ```bash
 f:/project/Profession Archives/Profession-Archives/.venv/Scripts/python.exe -m uvicorn backend.app.main:app --reload
 ```
+
+后端启动后，再进入 `desktop` 目录执行：
+
+```bash
+npm install
+npm run tauri:dev
+```
+
+启动后会打开原生窗口，前端内容仍然是 Vue，但它运行在桌面壳里，不是浏览器标签页。
 
 启动后访问 `http://127.0.0.1:8000/health` 可检查服务状态。
 

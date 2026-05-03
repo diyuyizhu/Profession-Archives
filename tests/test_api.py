@@ -78,6 +78,18 @@ def test_profile_creation_and_resume_draft_flow(client) -> None:
     assert draft["selected_projects"]
     assert draft["selected_experiences"]
 
+    update_response = client.patch(
+        f"/profiles/{profile_id}",
+        json={
+            "headline": "资深后端工程师",
+            "summary": "更新后的个人摘要。",
+        },
+    )
+    assert update_response.status_code == 200
+    updated_profile = update_response.json()
+    assert updated_profile["headline"] == "资深后端工程师"
+    assert updated_profile["summary"] == "更新后的个人摘要。"
+
 
 def test_application_tracking(client) -> None:
     profile_response = client.post(
@@ -115,3 +127,16 @@ def test_application_tracking(client) -> None:
     applications = list_response.json()
     assert len(applications) == 1
     assert applications[0]["status"] == "applied"
+
+    update_response = client.patch(
+        f"/applications/{application['id']}/status",
+        json={"status": "interviewing"},
+    )
+    assert update_response.status_code == 200
+    updated_application = update_response.json()
+    assert updated_application["status"] == "interviewing"
+
+    refreshed_list_response = client.get(f"/applications?profile_id={profile_id}")
+    assert refreshed_list_response.status_code == 200
+    refreshed_applications = refreshed_list_response.json()
+    assert refreshed_applications[0]["status"] == "interviewing"

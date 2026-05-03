@@ -17,3 +17,5 @@ desktop/dist/
 desktop/.vite/
 desktop/coverage/
 *.egg-info/
+tools/node/
+tools/rust/

@@ -2,8 +2,10 @@
 import { ref } from "vue";
 import ArchiveEntryView from "./views/ArchiveEntryView.vue";
 import JobInputView from "./views/JobInputView.vue";
+import ProfileManagerView from "./views/ProfileManagerView.vue";
+import TrackingBoardView from "./views/TrackingBoardView.vue";
 
-const activeView = ref<"archive" | "job">("archive");
+const activeView = ref<"archive" | "job" | "tracking" | "manager">("archive");
 const lastProfileId = ref<number | null>(null);
 const lastDraftSummary = ref("");
 </script>
@@ -43,13 +45,30 @@ const lastDraftSummary = ref("");
       >
         JD 输入
       </button>
+      <button
+        :class="{ active: activeView === 'tracking' }"
+        @click="activeView = 'tracking'"
+      >
+        投递看板
+      </button>
+      <button
+        :class="{ active: activeView === 'manager' }"
+        @click="activeView = 'manager'"
+      >
+        档案管理
+      </button>
     </nav>
 
     <ArchiveEntryView
       v-if="activeView === 'archive'"
       @saved="lastProfileId = $event"
     />
-    <JobInputView v-else @drafted="lastDraftSummary = $event" />
+    <JobInputView
+      v-else-if="activeView === 'job'"
+      @drafted="lastDraftSummary = $event"
+    />
+    <TrackingBoardView v-else-if="activeView === 'tracking'" />
+    <ProfileManagerView v-else />
   </main>
 </template>
 
