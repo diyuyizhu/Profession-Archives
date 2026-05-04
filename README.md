@@ -1,78 +1,49 @@
 # Profession-Archives
 
-🚀 介绍
-厌倦了在各大招聘平台反复填表，决定做一个属于技术人自己的职业底座
-Profession Archives - 一个基于 AI 的本地化职业资产管理与简历构建工具。隐私至上，原子化管理个人经历。
+![logo](logo.png)
 
-## 当前进展
+## 产品目标
 
-项目已经开始进入实现阶段，当前优先落地的是本地后端骨架与数据模型。
+- 全面的简历管理，本地化更隐私。
+- 针对目标岗位快速特化简历，筛选重点表达。
+- 面向多平台投递场景，减少重复翻资料（后续接浏览器插件智能填充）。
+- 记录从投递到面试的全流程，便于复盘优化。
+- 引入 AI 润色，最喜欢vibe-coding了
 
-### 已建立的基础
+## 架构
 
-- `FastAPI` 本地 API 服务骨架
-- `SQLite` 数据库初始化与本地数据目录约定
-- 档案、经历、项目、技能、投递记录的首版表结构
-- 一个可工作的 `JD -> 简历草稿` 服务接口
+- **Desktop**: PyWebView（原生应用窗口）
+- **Backend**: FastAPI（本地服务）
+- **Database**: SQLite（本地持久化）
+- **Frontend**: Vue 3 + Vite + daisyUI（静态资源）
+- **Packaging**: PyInstaller（单文件 exe）
 
-### 下一步
+说明：项目默认走单机一体化链路，不依赖云端部署。
 
-1. 补齐简历版本历史、文件附件和岗位快照的持久化。
-2. 接入桌面端壳子，开始做档案录入和投递看板。
-3. 将简历草稿从启发式筛选升级为 AI 对齐与润色流程。
+## 功能边界
 
-### 本地启动
+### 一期（已落地主线）
 
-如果你只跑 `desktop/src/main.ts`，那只是前端页面，不是桌面窗口。要看到真正的桌面壳，需要启动 Tauri。
+- 职业档案原子化管理（个人信息、技能、教育、项目、经历）
+- 岗位投递看板（状态流转与过程追踪）
+- JD 关键词匹配与简历草稿生成
 
-如果你想全程尽量绿色版，建议把便携工具放到仓库里的 `tools/`：
+### 二期（规划）
 
-- `tools/node/`：便携版 Node.js
-- `tools/rust/`：便携版 Rust/Cargo
+- 浏览器插件自动填充
+- 多平台投递模板适配
+- 更细粒度 AI 润色策略
 
-然后直接双击仓库根目录的 `run-green.bat`。
+## 运行
 
-`run-green.bat` 会优先使用系统里已经安装好的 Node.js；如果系统里没有 Node.js，才会在你确认后下载仓库内的便携版到 `tools/node/`。Rust 仍然使用仓库内的便携工具。
+下载release，即可启动应用。
 
-```bash
-f:/project/Profession Archives/Profession-Archives/.venv/Scripts/python.exe -m uvicorn backend.app.main:app --reload
+## 最小目录结构
+
+```text
+Profession-Archives/
+├── backend/                 # FastAPI 服务与业务逻辑
+├── frontend/                # Vue 前端源码
+├── dev-tools/               # 可选：构建脚本与工程产物（非必需）
+└── README.md                # 说明文档
 ```
-
-后端启动后，再进入 `desktop` 目录执行：
-
-```bash
-npm install
-npm run tauri:dev
-```
-
-启动后会打开原生窗口，前端内容仍然是 Vue，但它运行在桌面壳里，不是浏览器标签页。
-
-启动后访问 `http://127.0.0.1:8000/health` 可检查服务状态。
-
-🗃️ Profession Archives (职业档案)
-Profession Archives 是一款专为开发者与技术专家设计的本地化职业资产管理系统。
-
-不同于传统的在线简历生成器，我们主张“数据主权”，将你的职业经历视作核心资产进行本地化存储。通过将简历拆解为“原子化”的经历模块，结合 AI 的语义对齐能力，帮助你在数秒内针对不同岗位构建出高度特化的专业简历。
-
-✨ 核心特性
-🔒 隐私第一 (Local-First): 所有的个人信息、项目经历、证书物料均存储于本地数据库（SQLite）。无需上传服务器，彻底杜绝个人隐私泄露风险。
-
-🧩 原子化经历库: 将职业生涯拆解为独立的“经历碎片”。无论是复杂的后端架构经验（JavaEE/FastAPI），还是深奥的安全研究（PQC/密码学），均可按需自由组合。
-
-🤖 AI 智能对齐: 接入大模型（支持本地 Ollama 或在线 API），根据目标岗位 JD 自动提取关键词，并从你的档案库中挑选、润色最匹配的项目描述。
-
-📄 专业级 PDF 生成: 采用高度可定制的渲染引擎，提供多套符合工业界标准的简历模板，支持 Markdown 编写与实时预览。
-
-📅 投递全链路管理: 记录从投递、笔试到面试的每一个环节。自动抓取投递时的岗位快照，建立你的个人求职 CRM。
-
-🛠️ 技术架构
-Backend: Python (FastAPI) - 负责本地逻辑处理与数据管理。
-
-Frontend: Tauri / Vue 3 - 提供极致的桌面端原生体验。
-
-Database: SQLite - 轻量级、无感化的本地存储。
-
-Engine: 基于 WeasyPrint 的 HTML-to-PDF 渲染方案。
-
-💡 为什么选择 Profession Archives？
-在 AI 招聘时代，通用的简历已经失效。Profession Archives 让你拥有了一座属于自己的“职业博物馆”，你可以随时根据不同的战场，从博物馆中调取最精良的装备，组装成最具战斗力的简历。

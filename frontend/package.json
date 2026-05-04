@@ -1,0 +1,23 @@
+{
+  "name": "profession-archives-web",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.29",
+    "axios": "^1.7.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.5",
+    "vite": "^5.1.7",
+    "typescript": "^5.4.5",
+    "tailwindcss": "^3.4.3",
+    "postcss": "^8.4.38",
+    "daisyui": "^4.12.10",
+    "autoprefixer": "^10.4.19"
+  }
+}
