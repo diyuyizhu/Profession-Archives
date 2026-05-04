@@ -1,56 +1,32 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-base via-neutral to-base">
+  <div class="min-h-screen app-shell">
     <!-- Header Navigation -->
-    <nav
-      class="navbar bg-base/80 backdrop-blur sticky top-0 z-40 border-b border-primary/20"
-    >
-      <div class="flex-1">
-        <div class="btn btn-ghost text-xl font-bold glow-text">
-          📊 Profession Archives
+    <nav class="nav-shell sticky top-0 z-40">
+      <div class="nav-inner">
+        <div class="brand">
+          <span class="brand-mark">PA</span>
+          <span class="brand-text">Profession Archives</span>
         </div>
-      </div>
-      <div class="flex-none gap-2">
-        <div class="form-control">
-          <input
-            type="text"
-            placeholder="搜索档案..."
-            class="input input-bordered input-sm w-24 md:w-auto bg-neutral/50 border-primary/30"
-          />
-        </div>
-        <div class="dropdown dropdown-end">
-          <label tabindex="0" class="btn btn-ghost btn-circle avatar">
-            <div
-              class="w-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center"
-            >
-              <span class="text-sm">⚙️</span>
-            </div>
+        <div class="nav-actions">
+          <label class="search-pill">
+            <span class="search-icon">⌕</span>
+            <input type="text" placeholder="搜索档案" />
           </label>
-          <ul
-            tabindex="0"
-            class="dropdown-content z-[1] menu p-2 shadow bg-base border border-primary/20 rounded-box w-52"
-          >
-            <li><a @click="currentTab = 'profile'">个人设置</a></li>
-            <li><a>帮助</a></li>
-            <li><a>关于</a></li>
-          </ul>
+          <button class="icon-btn" title="设置">⚙️</button>
         </div>
       </div>
     </nav>
 
     <!-- Tabs Navigation -->
-    <div
-      class="tabs tabs-bordered bg-neutral/30 border-primary/20 sticky top-16 z-30"
-    >
+    <div class="tab-strip sticky top-16 z-30">
       <button
         v-for="tab in tabs"
         :key="tab.id"
         @click="currentTab = tab.id"
-        :class="[
-          'tab',
-          currentTab === tab.id ? 'tab-active text-primary' : 'text-primary/60',
-        ]"
+        :class="['tab-pill', currentTab === tab.id ? 'is-active' : '']"
       >
-        {{ tab.icon }} {{ tab.label }}
+        <span class="tab-icon">{{ tab.icon }}</span>
+        <span>{{ tab.label }}</span>
       </button>
     </div>
 
@@ -60,14 +36,8 @@
     </main>
 
     <!-- Footer -->
-    <footer
-      class="footer footer-center p-10 bg-neutral/50 border-t border-primary/20 mt-20"
-    >
-      <aside>
-        <p class="text-primary/70">
-          © 2026 Profession Archives - 你的职业资产管理器
-        </p>
-      </aside>
+    <footer class="footer-shell">
+      <p>© 2026 Profession Archives · 你的职业资产管理器</p>
     </footer>
   </div>
 </template>

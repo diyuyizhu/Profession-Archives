@@ -1,260 +1,175 @@
 <template>
-  <div class="space-y-6">
+  <div class="page-wrap">
     <!-- Hero Section -->
-    <div
-      class="hero min-h-64 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-lg border border-primary/20"
-    >
-      <div class="hero-content text-center">
-        <div class="max-w-md">
-          <h1 class="text-5xl font-bold glow-text mb-4">创建档案</h1>
-          <p class="py-6 text-primary/70">
-            详细填写你的职业信息，为针对性简历生成做准备
+    <section class="hero-card">
+      <div class="hero-grid">
+        <div>
+          <p class="hero-kicker">档案录入</p>
+          <h1 class="hero-title">创建档案</h1>
+          <p class="hero-subtitle">
+            一次录入，快速生成可针对岗位特化的简历基础库。
           </p>
+          <div class="hero-tags">
+            <span>本地优先</span>
+            <span>结构化</span>
+            <span>可复用</span>
+          </div>
+        </div>
+        <div class="hero-steps">
+          <div class="step-card">
+            <p class="step-title">01 基本信息</p>
+            <p class="step-desc">姓名、职位、联系方式</p>
+          </div>
+          <div class="step-card">
+            <p class="step-title">02 能力模块</p>
+            <p class="step-desc">技能、教育、经历、项目</p>
+          </div>
+          <div class="step-card">
+            <p class="step-title">03 生成草稿</p>
+            <p class="step-desc">自动匹配 JD 关键词</p>
+          </div>
         </div>
       </div>
-    </div>
+      <div class="hero-glow"></div>
+    </section>
 
     <!-- Form Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="form-grid">
       <!-- Basic Info Card -->
-      <div
-        class="lg:col-span-3 card bg-neutral border border-primary/20 shadow-xl"
-      >
-        <div class="card-body">
-          <h2 class="card-title text-primary">基本信息</h2>
-          <div class="form-control">
-            <label class="label"><span class="label-text">姓名 *</span></label>
+      <section class="section-card section-wide">
+        <header class="section-header">
+          <div>
+            <h2>基本信息</h2>
+            <p>先确认你的身份与联系方式，后续可一键复用。</p>
+          </div>
+          <span class="section-badge">必填优先</span>
+        </header>
+        <div class="field-grid">
+          <label class="field">
+            <span>姓名 *</span>
             <input
               v-model="form.full_name"
               type="text"
               placeholder="请输入全名"
-              class="input input-bordered bg-neutral/50 border-primary/30"
               required
             />
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div class="form-control">
-              <label class="label"><span class="label-text">职位</span></label>
-              <input
-                v-model="form.headline"
-                type="text"
-                placeholder="e.g. 后端工程师"
-                class="input input-bordered bg-neutral/50 border-primary/30"
-              />
-            </div>
-            <div class="form-control">
-              <label class="label"><span class="label-text">邮箱</span></label>
-              <input
-                v-model="form.email"
-                type="email"
-                placeholder="your@email.com"
-                class="input input-bordered bg-neutral/50 border-primary/30"
-              />
-            </div>
-          </div>
-          <div class="form-control">
-            <label class="label"><span class="label-text">电话</span></label>
+          </label>
+          <label class="field">
+            <span>职位</span>
             <input
-              v-model="form.phone"
-              type="tel"
-              placeholder="+86 xxxxx"
-              class="input input-bordered bg-neutral/50 border-primary/30"
+              v-model="form.headline"
+              type="text"
+              placeholder="后端工程师 / 产品经理"
             />
-          </div>
-          <div class="form-control">
-            <label class="label"
-              ><span class="label-text">个人总结</span></label
-            >
+          </label>
+          <label class="field">
+            <span>邮箱</span>
+            <input v-model="form.email" type="email" placeholder="you@email.com" />
+          </label>
+          <label class="field">
+            <span>电话</span>
+            <input v-model="form.phone" type="tel" placeholder="+86 138xxxx" />
+          </label>
+          <label class="field field-wide">
+            <span>个人总结</span>
             <textarea
               v-model="form.summary"
-              class="textarea textarea-bordered bg-neutral/50 border-primary/30 h-24"
-              placeholder="简要描述你的职业背景和特长..."
+              placeholder="一句话概括你的能力边界与优势"
             ></textarea>
-          </div>
+          </label>
         </div>
-      </div>
+      </section>
 
       <!-- Skills Card -->
-      <div class="card bg-neutral border border-primary/20 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title text-primary text-lg">技能</h2>
-          <div
-            v-for="(skill, idx) in form.skills"
-            :key="idx"
-            class="space-y-2 mb-4 p-3 bg-neutral/50 rounded"
-          >
-            <input
-              v-model="skill.name"
-              type="text"
-              placeholder="技能名称"
-              class="input input-bordered input-sm bg-neutral/70 border-primary/30 w-full"
-            />
-            <input
-              v-model="skill.category"
-              type="text"
-              placeholder="分类"
-              class="input input-bordered input-sm bg-neutral/70 border-primary/30 w-full"
-            />
-            <button
-              @click="removeSkill(idx)"
-              class="btn btn-sm btn-ghost btn-outline"
-            >
-              移除
-            </button>
+      <section class="section-card">
+        <header class="section-header">
+          <div>
+            <h2>技能</h2>
+            <p>按领域拆解你的能力资产。</p>
           </div>
-          <button
-            @click="addSkill"
-            class="btn btn-sm btn-primary btn-outline w-full"
-          >
-            + 添加技能
-          </button>
+          <button @click="addSkill" class="ghost-btn">+ 添加</button>
+        </header>
+        <div class="stack">
+          <div v-for="(skill, idx) in form.skills" :key="idx" class="stack-card">
+            <input v-model="skill.name" type="text" placeholder="技能名称" />
+            <input v-model="skill.category" type="text" placeholder="分类" />
+            <button @click="removeSkill(idx)" class="ghost-btn">移除</button>
+          </div>
         </div>
-      </div>
+      </section>
 
       <!-- Education Card -->
-      <div class="card bg-neutral border border-primary/20 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title text-secondary text-lg">教育</h2>
-          <div
-            v-for="(edu, idx) in form.education"
-            :key="idx"
-            class="space-y-2 mb-4 p-3 bg-neutral/50 rounded"
-          >
-            <input
-              v-model="edu.school"
-              type="text"
-              placeholder="学校"
-              class="input input-bordered input-sm bg-neutral/70 border-primary/30 w-full"
-            />
-            <input
-              v-model="edu.degree"
-              type="text"
-              placeholder="学位"
-              class="input input-bordered input-sm bg-neutral/70 border-primary/30 w-full"
-            />
-            <input
-              v-model="edu.start_date"
-              type="month"
-              class="input input-bordered input-sm bg-neutral/70 border-primary/30 w-full"
-            />
-            <button
-              @click="removeEducation(idx)"
-              class="btn btn-sm btn-ghost btn-outline"
-            >
-              移除
-            </button>
+      <section class="section-card">
+        <header class="section-header">
+          <div>
+            <h2>教育</h2>
+            <p>学历与关键时间线，保持简洁。</p>
           </div>
-          <button
-            @click="addEducation"
-            class="btn btn-sm btn-secondary btn-outline w-full"
-          >
-            + 添加教育
-          </button>
+          <button @click="addEducation" class="ghost-btn">+ 添加</button>
+        </header>
+        <div class="stack">
+          <div v-for="(edu, idx) in form.education" :key="idx" class="stack-card">
+            <input v-model="edu.school" type="text" placeholder="学校" />
+            <input v-model="edu.degree" type="text" placeholder="学位" />
+            <input v-model="edu.start_date" type="month" />
+            <button @click="removeEducation(idx)" class="ghost-btn">移除</button>
+          </div>
         </div>
-      </div>
+      </section>
 
       <!-- Experience & Projects Card -->
-      <div
-        class="lg:col-span-3 card bg-neutral border border-primary/20 shadow-xl"
-      >
-        <div class="card-body">
-          <div class="tabs">
-            <input
-              type="radio"
-              name="exp_tab"
-              class="tab"
-              aria-label="工作经历"
-              checked
-            />
-            <div class="tab-content p-4">
+      <section class="section-card section-wide">
+        <header class="section-header">
+          <div>
+            <h2>经历与项目</h2>
+            <p>突出可验证成果，避免长段落。</p>
+          </div>
+        </header>
+        <div class="dual-tabs">
+          <div class="tab-column">
+            <div class="tab-title">
+              <span>工作经历</span>
+              <button @click="addExperience" class="ghost-btn">+ 添加</button>
+            </div>
+            <div class="stack">
               <div
                 v-for="(exp, idx) in form.experiences"
                 :key="`exp-${idx}`"
-                class="space-y-2 mb-4 p-3 bg-neutral/50 rounded"
+                class="stack-card"
               >
-                <input
-                  v-model="exp.role"
-                  type="text"
-                  placeholder="职位"
-                  class="input input-bordered input-sm bg-neutral/70 border-primary/30 w-full"
-                />
-                <input
-                  v-model="exp.company"
-                  type="text"
-                  placeholder="公司"
-                  class="input input-bordered input-sm bg-neutral/70 border-primary/30 w-full"
-                />
-                <textarea
-                  v-model="exp.description_md"
-                  placeholder="职责描述"
-                  class="textarea textarea-bordered textarea-sm bg-neutral/70 border-primary/30 w-full"
-                ></textarea>
-                <button
-                  @click="removeExperience(idx)"
-                  class="btn btn-sm btn-ghost btn-outline"
-                >
-                  移除
-                </button>
+                <input v-model="exp.role" type="text" placeholder="职位" />
+                <input v-model="exp.company" type="text" placeholder="公司" />
+                <textarea v-model="exp.description_md" placeholder="职责描述"></textarea>
+                <button @click="removeExperience(idx)" class="ghost-btn">移除</button>
               </div>
-              <button
-                @click="addExperience"
-                class="btn btn-sm btn-accent btn-outline w-full"
-              >
-                + 添加工作经历
-              </button>
             </div>
-
-            <input type="radio" name="exp_tab" class="tab" aria-label="项目" />
-            <div class="tab-content p-4">
+          </div>
+          <div class="tab-column">
+            <div class="tab-title">
+              <span>项目</span>
+              <button @click="addProject" class="ghost-btn">+ 添加</button>
+            </div>
+            <div class="stack">
               <div
                 v-for="(proj, idx) in form.projects"
                 :key="`proj-${idx}`"
-                class="space-y-2 mb-4 p-3 bg-neutral/50 rounded"
+                class="stack-card"
               >
-                <input
-                  v-model="proj.name"
-                  type="text"
-                  placeholder="项目名称"
-                  class="input input-bordered input-sm bg-neutral/70 border-primary/30 w-full"
-                />
-                <input
-                  v-model="proj.summary"
-                  type="text"
-                  placeholder="简介"
-                  class="input input-bordered input-sm bg-neutral/70 border-primary/30 w-full"
-                />
-                <textarea
-                  v-model="proj.description_md"
-                  placeholder="项目描述"
-                  class="textarea textarea-bordered textarea-sm bg-neutral/70 border-primary/30 w-full"
-                ></textarea>
-                <button
-                  @click="removeProject(idx)"
-                  class="btn btn-sm btn-ghost btn-outline"
-                >
-                  移除
-                </button>
+                <input v-model="proj.name" type="text" placeholder="项目名称" />
+                <input v-model="proj.summary" type="text" placeholder="简介" />
+                <textarea v-model="proj.description_md" placeholder="项目描述"></textarea>
+                <button @click="removeProject(idx)" class="ghost-btn">移除</button>
               </div>
-              <button
-                @click="addProject"
-                class="btn btn-sm btn-accent btn-outline w-full"
-              >
-                + 添加项目
-              </button>
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
 
     <!-- Submit Button -->
-    <div class="flex justify-end gap-4">
-      <button class="btn btn-outline">取消</button>
-      <button
-        @click="submitArchive"
-        :disabled="isLoading"
-        class="btn btn-primary"
-      >
+    <div class="action-bar">
+      <button class="ghost-btn">取消</button>
+      <button @click="submitArchive" :disabled="isLoading" class="primary-btn">
         <span v-if="isLoading" class="loading loading-spinner"></span>
         保存档案
       </button>
