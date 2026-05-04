@@ -64,7 +64,11 @@
           </label>
           <label class="field">
             <span>邮箱</span>
-            <input v-model="form.email" type="email" placeholder="you@email.com" />
+            <input
+              v-model="form.email"
+              type="email"
+              placeholder="you@email.com"
+            />
           </label>
           <label class="field">
             <span>电话</span>
@@ -90,7 +94,11 @@
           <button @click="addSkill" class="ghost-btn">+ 添加</button>
         </header>
         <div class="stack">
-          <div v-for="(skill, idx) in form.skills" :key="idx" class="stack-card">
+          <div
+            v-for="(skill, idx) in form.skills"
+            :key="idx"
+            class="stack-card"
+          >
             <input v-model="skill.name" type="text" placeholder="技能名称" />
             <input v-model="skill.category" type="text" placeholder="分类" />
             <button @click="removeSkill(idx)" class="ghost-btn">移除</button>
@@ -108,11 +116,17 @@
           <button @click="addEducation" class="ghost-btn">+ 添加</button>
         </header>
         <div class="stack">
-          <div v-for="(edu, idx) in form.education" :key="idx" class="stack-card">
+          <div
+            v-for="(edu, idx) in form.education"
+            :key="idx"
+            class="stack-card"
+          >
             <input v-model="edu.school" type="text" placeholder="学校" />
             <input v-model="edu.degree" type="text" placeholder="学位" />
             <input v-model="edu.start_date" type="month" />
-            <button @click="removeEducation(idx)" class="ghost-btn">移除</button>
+            <button @click="removeEducation(idx)" class="ghost-btn">
+              移除
+            </button>
           </div>
         </div>
       </section>
@@ -139,8 +153,13 @@
               >
                 <input v-model="exp.role" type="text" placeholder="职位" />
                 <input v-model="exp.company" type="text" placeholder="公司" />
-                <textarea v-model="exp.description_md" placeholder="职责描述"></textarea>
-                <button @click="removeExperience(idx)" class="ghost-btn">移除</button>
+                <textarea
+                  v-model="exp.description_md"
+                  placeholder="职责描述"
+                ></textarea>
+                <button @click="removeExperience(idx)" class="ghost-btn">
+                  移除
+                </button>
               </div>
             </div>
           </div>
@@ -157,8 +176,13 @@
               >
                 <input v-model="proj.name" type="text" placeholder="项目名称" />
                 <input v-model="proj.summary" type="text" placeholder="简介" />
-                <textarea v-model="proj.description_md" placeholder="项目描述"></textarea>
-                <button @click="removeProject(idx)" class="ghost-btn">移除</button>
+                <textarea
+                  v-model="proj.description_md"
+                  placeholder="项目描述"
+                ></textarea>
+                <button @click="removeProject(idx)" class="ghost-btn">
+                  移除
+                </button>
               </div>
             </div>
           </div>

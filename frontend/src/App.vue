@@ -12,6 +12,9 @@
             <span class="search-icon">⌕</span>
             <input type="text" placeholder="搜索档案" />
           </label>
+          <button class="theme-btn" @click="toggleTheme" :title="themeLabel">
+            {{ themeLabel }}
+          </button>
           <button class="icon-btn" title="设置">⚙️</button>
         </div>
       </div>
@@ -43,18 +46,44 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
+import HomeView from "./views/HomeView.vue";
 import ArchiveEntryView from "./views/ArchiveEntryView.vue";
 import TrackingBoardView from "./views/TrackingBoardView.vue";
 import ProfileManagerView from "./views/ProfileManagerView.vue";
 
 const tabs = [
+  { id: "home", label: "首页", icon: "✨" },
   { id: "archive", label: "档案录入", icon: "📝" },
   { id: "tracking", label: "投递看板", icon: "📊" },
   { id: "profile", label: "档案管理", icon: "👤" },
 ];
 
-const currentTab = ref("archive");
+const currentTab = ref("home");
+const theme = ref<"light" | "dark">("light");
+
+const themeLabel = computed(() => (theme.value === "light" ? "夜" : "日"));
+
+const applyTheme = () => {
+  if (typeof document !== "undefined") {
+    document.documentElement.dataset.theme = theme.value;
+  }
+};
+
+const toggleTheme = () => {
+  theme.value = theme.value === "light" ? "dark" : "light";
+  localStorage.setItem("pa-theme", theme.value);
+};
+
+onMounted(() => {
+  const savedTheme = localStorage.getItem("pa-theme");
+  if (savedTheme === "dark" || savedTheme === "light") {
+    theme.value = savedTheme;
+  }
+  applyTheme();
+});
+
+watch(theme, applyTheme);
 
 const currentView = computed(() => {
   switch (currentTab.value) {
@@ -62,6 +91,8 @@ const currentView = computed(() => {
       return TrackingBoardView;
     case "profile":
       return ProfileManagerView;
+    case "home":
+      return HomeView;
     default:
       return ArchiveEntryView;
   }
