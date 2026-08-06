@@ -1,0 +1,44 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+node_modules/
+target/
+.profession_archives/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+desktop/
+*.egg-info/
+tools/node/
+tools/rust/
+# Editor and OS files
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.*
+
+# Python packaging / build
+*.spec
+*.egg
+pip-wheel-metadata/
+pip-log.txt
+
+# Logs
+*.log
+
+# Binary output
+*.exe
+
