@@ -1,7 +1,14 @@
 /**
  * 侧边栏导航菜单树：一二级菜单（按 README 功能模块细分）。
  * 数据驱动：侧栏渲染、路由生成、页面高亮共用一份数据。
+ * 一级图标从 @pa/shared MODULES 复用（单一来源，避免两份数据漂移）。
  */
+import { MODULES } from '@pa/shared'
+
+/** 按 key 取模块图标（缺失时回退空串，兜底防错） */
+function iconOf(key: string): string {
+  return MODULES.find((m) => m.key === key)?.icon ?? ''
+}
 
 export interface NavChild {
   /** 子项 id（路由 name） */
@@ -35,7 +42,7 @@ export const NAV_TREE: NavItem[] = [
     code: 'A',
     title: '生涯档案',
     path: '/archive',
-    icon: 'M2 6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z',
+    icon: iconOf('archive'),
     children: [
       { id: 'archive-journal', title: '日记 / 成就 / 里程碑', path: '/archive/journal', feature: 'A1 原子化记录' },
       { id: 'archive-timeline', title: '生涯时间线', path: '/archive/timeline', feature: 'A4 时间线视图' },
@@ -47,7 +54,7 @@ export const NAV_TREE: NavItem[] = [
     code: 'B',
     title: '投递看板',
     path: '/tracking',
-    icon: 'M3 3v18h18M7 15l4-4 3 3 5-6',
+    icon: iconOf('tracking'),
     children: [
       { id: 'tracking-board', title: '看板视图', path: '/tracking/board', feature: 'B1 状态机看板' },
       { id: 'tracking-collect', title: '岗位采集', path: '/tracking/collect', feature: 'B2 岗位采集' },
@@ -60,7 +67,7 @@ export const NAV_TREE: NavItem[] = [
     code: 'C',
     title: '面试复盘',
     path: '/interview',
-    icon: 'M8 2h8v4H8ZM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 11h4M12 16h4M8 11h.01M8 16h.01',
+    icon: iconOf('interview'),
     children: [
       { id: 'interview-record', title: '面试记录', path: '/interview/record', feature: 'C1/C2 轮次记录与状态流转' },
       { id: 'interview-review', title: 'AI 复盘', path: '/interview/review', feature: 'C3 面试复盘' },
@@ -72,7 +79,7 @@ export const NAV_TREE: NavItem[] = [
     code: 'D',
     title: '自动投递',
     path: '/automation',
-    icon: 'M3 7l9-4 9 4-9 4-9-4ZM3 7v10l9 4 9-4V7M12 11v10',
+    icon: iconOf('automation'),
     children: [
       { id: 'automation-plugin', title: '插件配对', path: '/automation/plugin', feature: 'D1/D2 本地桥与插件' },
       { id: 'automation-mapping', title: '字段映射', path: '/automation/mapping', feature: 'D4 字段映射记忆' },
@@ -83,7 +90,7 @@ export const NAV_TREE: NavItem[] = [
     code: 'E',
     title: 'AI 助手',
     path: '/ai',
-    icon: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z',
+    icon: iconOf('ai'),
     children: [
       { id: 'ai-extract', title: '素材提炼', path: '/ai/extract', feature: 'E2 素材提炼' },
       { id: 'ai-polish', title: '简历润色', path: '/ai/polish', feature: 'E2 简历润色' },
@@ -95,7 +102,7 @@ export const NAV_TREE: NavItem[] = [
     code: 'F',
     title: '成长追踪',
     path: '/growth',
-    icon: 'M12 20V10M18 20V4M6 20v-4',
+    icon: iconOf('growth'),
     children: [
       { id: 'growth-funnel', title: '转化漏斗', path: '/growth/funnel', feature: 'F1 路线分析' },
       { id: 'growth-learning', title: '学习计划', path: '/growth/learning', feature: 'F2 短板补足' },
@@ -107,7 +114,7 @@ export const NAV_TREE: NavItem[] = [
     code: 'A5',
     title: '个人名片',
     path: '/card',
-    icon: 'M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8ZM6.17 15.99a3 3 0 1 1 5.66 0M15 12h.01M16 10h2M16 14h2',
+    icon: iconOf('card'),
     children: [
       { id: 'card-preview', title: '名片预览', path: '/card/preview', feature: 'A5 对外名片页' },
       { id: 'card-export', title: '导出 HTML', path: '/card/export', feature: 'A5 静态导出' },
@@ -118,7 +125,7 @@ export const NAV_TREE: NavItem[] = [
     code: '—',
     title: '设置',
     path: '/settings',
-    icon: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+    icon: iconOf('settings'),
     children: [
       { id: 'settings-ai', title: 'AI 配置', path: '/settings/ai', feature: 'E1 双模式配置' },
       { id: 'settings-privacy', title: '隐私授权', path: '/settings/privacy', feature: 'E3 隐私提示' },

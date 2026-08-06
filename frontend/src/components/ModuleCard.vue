@@ -3,7 +3,7 @@ import type { ModuleMeta } from '@pa/shared'
 
 /**
  * 功能模块卡片（预留的"功能按钮"）：点击跳转对应模块占位页。
- * 结构：模块代号徽标 + 标题 + 描述 + "进入模块 →"。
+ * 结构：模块图标 + 标题 + 描述 + "进入模块 →"。
  */
 defineProps<{
   module: ModuleMeta
@@ -14,9 +14,19 @@ defineProps<{
   <RouterLink :to="module.path" class="module-card card-glass group block p-6 no-underline">
     <div class="flex items-center justify-between">
       <span
-        class="font-mono-data flex h-9 min-w-9 items-center justify-center rounded-lg border border-[rgba(50,240,140,0.3)] bg-[rgba(50,240,140,0.08)] px-2 text-sm font-bold text-[#32f08c]"
+        class="flex h-9 w-9 items-center justify-center rounded-lg border border-[rgba(50,240,140,0.3)] bg-[rgba(50,240,140,0.08)] text-[#32f08c]"
       >
-        {{ module.code }}
+        <svg
+          class="h-[18px] w-[18px]"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path :d="module.icon" />
+        </svg>
       </span>
       <span
         class="rounded-full border border-[rgba(255,255,255,0.08)] px-2 py-0.5 text-xs text-[rgba(245,249,254,0.45)]"
