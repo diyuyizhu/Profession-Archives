@@ -62,18 +62,20 @@ const activeKey = computed(() => activeModuleKey())
     <!-- logo -->
     <RouterLink
       to="/"
-      class="flex h-14 shrink-0 items-center gap-2.5 border-b border-[rgba(255,255,255,0.06)] px-5 no-underline"
+      class="flex h-14 shrink-0 items-center gap-2.5 border-b border-[rgba(255,255,255,0.06)] px-4 no-underline"
     >
-      <span
-        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(50,240,140,0.12)] font-mono text-lg font-bold text-[#32f08c]"
-      >
-        P
-      </span>
+      <img
+        src="@/assets/logo-transparent.png"
+        alt="Profession-Archives"
+        class="h-8 w-8 shrink-0"
+      />
       <div v-if="!ui.sidebarCollapsed" class="min-w-0">
-        <div class="heading-tight truncate text-[14px] tracking-wide text-[#f5f9fe]">
+        <div class="heading-tight text-[13px] leading-tight tracking-wide text-[#f5f9fe]">
           Profession-Archives
         </div>
-        <div class="text-[11px] text-[rgba(245,249,254,0.35)]">生涯大脑 · 求职闭环</div>
+        <div class="mt-0.5 text-[11px] leading-tight text-[rgba(245,249,254,0.35)]">
+          生涯大脑 · 求职闭环
+        </div>
       </div>
     </RouterLink>
 
@@ -95,10 +97,20 @@ const activeKey = computed(() => activeModuleKey())
           @click="toggle(item)"
         >
           <span
-            class="font-mono-data flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[rgba(255,255,255,0.08)] bg-[rgba(237,239,242,0.05)] text-[11px] font-bold text-[rgba(245,249,254,0.5)] transition-colors group-hover:border-[rgba(50,240,140,0.3)] group-hover:text-[#32f08c]"
-            :class="isActive(item) ? '!border-[rgba(50,240,140,0.4)] !text-[#32f08c]' : ''"
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[rgba(245,249,254,0.45)] transition-colors group-hover:text-[#32f08c]"
+            :class="isActive(item) ? '!text-[#32f08c]' : ''"
           >
-            {{ item.code }}
+            <svg
+              class="h-[18px] w-[18px]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path :d="item.icon" />
+            </svg>
           </span>
           <span v-if="!ui.sidebarCollapsed" class="flex-1 truncate text-left">{{ item.title }}</span>
           <svg
