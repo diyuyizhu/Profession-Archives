@@ -83,7 +83,7 @@ export const NAV_TREE: NavItem[] = [
     code: 'E',
     title: 'AI 助手',
     path: '/ai',
-    icon: 'M12 8V4H8M4 8h16a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2ZM2 14h2M20 14h2M15 13v2M9 13v2',
+    icon: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z',
     children: [
       { id: 'ai-extract', title: '素材提炼', path: '/ai/extract', feature: 'E2 素材提炼' },
       { id: 'ai-polish', title: '简历润色', path: '/ai/polish', feature: 'E2 简历润色' },
