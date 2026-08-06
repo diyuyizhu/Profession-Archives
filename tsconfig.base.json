@@ -13,9 +13,8 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
     "paths": {
-      "@pa/shared": ["shared/src/index.ts"]
+      "@pa/shared": ["./shared/src/index.ts"]
     }
   }
 }
