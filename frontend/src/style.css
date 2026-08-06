@@ -1,0 +1,346 @@
+/* ============================================================
+   Profession-Archives · Design System
+   复刻 Trae AI IDE 官网设计语言（trae.cn）
+   基调：近黑底 #0a0b0d + 荧光薄荷绿 #32f08c + 柔和光晕 + 玻璃拟态
+   克制发光 · AI 未来感 · 避免廉价霓虹感
+   ============================================================ */
+
+@import 'tailwindcss';
+
+/* ---------- daisyUI 5 · Trae 主题（default） ---------- */
+@plugin 'daisyui' {
+  themes: false;
+}
+
+@plugin 'daisyui/theme' {
+  name: 'trae';
+  default: true;
+  color-scheme: dark;
+  --color-base-100: #0a0b0d;
+  --color-base-200: #0e1013;
+  --color-base-300: #14171b;
+  --color-base-content: #f5f9fe;
+  --color-primary: #32f08c;
+  --color-primary-content: #0a0b0d;
+  --color-secondary: #3ee1a3;
+  --color-secondary-content: #0a0b0d;
+  --color-accent: #60f2bd;
+  --color-accent-content: #0a0b0d;
+  --color-neutral: #14171b;
+  --color-neutral-content: #f5f9fe;
+  --color-info: #38bdf8;
+  --color-info-content: #0a0b0d;
+  --color-success: #32f08c;
+  --color-success-content: #0a0b0d;
+  --color-warning: #fbbf24;
+  --color-warning-content: #0a0b0d;
+  --color-error: #f87171;
+  --color-error-content: #0a0b0d;
+}
+
+/* ---------- Tailwind 主题令牌（字体 / 品牌渐变） ---------- */
+@theme inline {
+  --font-sans:
+    'Inter', 'Noto Sans SC', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui,
+    sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, 'Courier New', ui-monospace,
+    monospace;
+}
+
+:root,
+[data-theme='trae'] {
+  /* 像素矩阵（跟随主题，供 canvas 读取） */
+  --pa-px-rest: rgba(0, 0, 0, 0.85);
+  --pa-px-active: #32f08c;
+  --pa-px-line: rgba(237, 239, 242, 0.14);
+  --pa-px-mouse: rgba(50, 240, 140, 0.45);
+}
+
+/* ---------- 全局基础 ---------- */
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #0a0b0d; /* 近黑，不用纯黑 */
+  color: #f5f9fe;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(50, 240, 140, 0.28);
+  color: #f5f9fe;
+}
+
+/* 滚动条：深色底 + 薄荷绿弱化 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0b0d;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(237, 239, 242, 0.14);
+  border-radius: 5px;
+  border: 2px solid #0a0b0d;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(50, 240, 140, 0.35);
+}
+
+/* ---------- 品牌文字渐变 ---------- */
+.text-brand-gradient {
+  background: linear-gradient(90deg, #3ee1a3, #32f08c 36%, #60f2bd 71.6%, #a0fde7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- 深色氛围光晕层（随内容滚动，非 fixed） ----------
+   大范围椭圆径向渐变 · 低透明度 · 无光斑圆形边界
+   置于内容之下（z-index:0），内容 z-index:1 隔离 */
+.aura-layer {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 980px;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 75% 55% at 50% -8%,
+      rgba(59, 130, 246, 0.14) 0%,
+      rgba(59, 130, 246, 0) 70%
+    ),
+    radial-gradient(
+      ellipse 55% 45% at 68% -4%,
+      rgba(56, 189, 248, 0.09) 0%,
+      rgba(56, 189, 248, 0) 65%
+    ),
+    radial-gradient(
+      ellipse 60% 50% at 30% -2%,
+      rgba(139, 92, 246, 0.08) 0%,
+      rgba(139, 92, 246, 0) 68%
+    );
+}
+
+/* 底部 CTA 中心微光（视觉回环） */
+.aura-cta {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 50% 60% at 50% 50%,
+    rgba(50, 240, 140, 0.1) 0%,
+    rgba(50, 240, 140, 0) 70%
+  );
+}
+
+/* 全局氛围光斑（fixed 视口层）：常驻柔和光晕，
+   供毛玻璃卡片透出磨砂光感 —— 玻璃感的关键素材 */
+.aura-fixed {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 60% 45% at 15% -5%,
+      rgba(50, 240, 140, 0.1) 0%,
+      rgba(50, 240, 140, 0) 65%
+    ),
+    radial-gradient(
+      ellipse 55% 40% at 88% 12%,
+      rgba(56, 189, 248, 0.1) 0%,
+      rgba(56, 189, 248, 0) 60%
+    ),
+    radial-gradient(
+      ellipse 45% 35% at 78% 78%,
+      rgba(139, 92, 246, 0.08) 0%,
+      rgba(139, 92, 246, 0) 60%
+    ),
+    radial-gradient(
+      ellipse 40% 30% at 20% 85%,
+      rgba(50, 240, 140, 0.06) 0%,
+      rgba(50, 240, 140, 0) 55%
+    );
+}
+
+/* ---------- 区块分隔渐变带（柔和分区，避免硬边） ---------- */
+.section-fade {
+  height: 140px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    #0c0c0c 0%,
+    rgba(12, 12, 12, 0.6) 30%,
+    rgba(12, 12, 12, 0.6) 60%,
+    #0c0c0c 100%
+  );
+}
+
+/* ---------- 卡片：毛玻璃（12px 圆角） ---------- */
+.card-glass {
+  position: relative;
+  background: rgba(18, 20, 24, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 12px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+}
+
+.card-glass:hover {
+  background: rgba(18, 20, 24, 0.38);
+  border-color: rgba(50, 240, 140, 0.35);
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 16px 40px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(50, 240, 140, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- 主按钮：薄荷绿底 + 近黑字 + 光晕阴影 ---------- */
+.btn-primary-trae {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 24px;
+  height: 44px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #3ee1a3, #32f08c 36%, #60f2bd 71.6%, #a0fde7);
+  background-size: 160% 100%;
+  color: #0a0b0d;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  border: none;
+  box-shadow:
+    0 0 24px rgba(50, 240, 140, 0.25),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  transition:
+    background-position 0.4s ease,
+    box-shadow 0.25s ease,
+    transform 0.15s ease,
+    filter 0.25s ease;
+}
+
+.btn-primary-trae:hover {
+  background-position: 100% 0;
+  filter: brightness(1.08);
+  box-shadow:
+    0 0 32px rgba(50, 240, 140, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-primary-trae:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+
+.btn-primary-trae:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- 次按钮：半透明白底 + 白边框 ---------- */
+.btn-secondary-trae {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 24px;
+  height: 44px;
+  border-radius: 8px;
+  background: rgba(237, 239, 242, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f5f9fe;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.15s ease;
+}
+
+.btn-secondary-trae:hover {
+  background: rgba(237, 239, 242, 0.13);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.btn-secondary-trae:focus-visible {
+  outline: none;
+  border-color: rgba(50, 240, 140, 0.7);
+  box-shadow: 0 0 0 3px rgba(50, 240, 140, 0.15);
+}
+
+/* ---------- 输入框：半透明白底，focus 薄荷绿描边 ---------- */
+.input-trae {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: rgba(237, 239, 242, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f5f9fe;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+}
+
+.input-trae::placeholder {
+  color: rgba(245, 249, 254, 0.35);
+}
+
+.input-trae:focus {
+  outline: none;
+  border-color: rgba(50, 240, 140, 0.7);
+  background: rgba(237, 239, 242, 0.1);
+  box-shadow: 0 0 0 3px rgba(50, 240, 140, 0.15);
+}
+
+/* ---------- 标题：加粗 + 轻微字距 ---------- */
+.heading-tight {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+}
+
+/* 等宽数字 */
+.font-mono-data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 柔和分隔线 */
+.hr-faint {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
