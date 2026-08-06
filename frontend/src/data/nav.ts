@@ -60,7 +60,7 @@ export const NAV_TREE: NavItem[] = [
     code: 'C',
     title: '面试复盘',
     path: '/interview',
-    icon: 'M12 3a6 6 0 0 0 4 10.5V17M12 3a6 6 0 0 1 4 10.5M12 3v14M8 21h8',
+    icon: 'M8 2h8v4H8ZM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 11h4M12 16h4M8 11h.01M8 16h.01',
     children: [
       { id: 'interview-record', title: '面试记录', path: '/interview/record', feature: 'C1/C2 轮次记录与状态流转' },
       { id: 'interview-review', title: 'AI 复盘', path: '/interview/review', feature: 'C3 面试复盘' },
@@ -83,7 +83,7 @@ export const NAV_TREE: NavItem[] = [
     code: 'E',
     title: 'AI 助手',
     path: '/ai',
-    icon: 'M15 7V3M15 3h-3M15 3h2a4 4 0 0 1 4 4M21 7v2M21 7v1.5M21 7h-1M21 7h-3M15 21h-2a4 4 0 0 1-4-4M13 17h2a4 4 0 0 1 4 4M13 17v.5M13 17v-2M8 3h2M3 7h2M3 17h2M8 21h2',
+    icon: 'M12 8V4H8M4 8h16a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2ZM2 14h2M20 14h2M15 13v2M9 13v2',
     children: [
       { id: 'ai-extract', title: '素材提炼', path: '/ai/extract', feature: 'E2 素材提炼' },
       { id: 'ai-polish', title: '简历润色', path: '/ai/polish', feature: 'E2 简历润色' },
@@ -107,7 +107,7 @@ export const NAV_TREE: NavItem[] = [
     code: 'A5',
     title: '个人名片',
     path: '/card',
-    icon: 'M20 6 9 17l-5-5',
+    icon: 'M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8ZM6.17 15.99a3 3 0 1 1 5.66 0M15 12h.01M16 10h2M16 14h2',
     children: [
       { id: 'card-preview', title: '名片预览', path: '/card/preview', feature: 'A5 对外名片页' },
       { id: 'card-export', title: '导出 HTML', path: '/card/export', feature: 'A5 静态导出' },
