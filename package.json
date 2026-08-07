@@ -14,7 +14,8 @@
     "build": "npm run build -w frontend",
     "preview": "npm run preview -w frontend",
     "typecheck": "npm run typecheck -w frontend && npm run typecheck -w server",
-    "server": "npm run dev -w server"
+    "server": "npm run dev -w server",
+    "test": "tsx tests/smoke.ts"
   },
   "engines": {
     "node": ">=20"
