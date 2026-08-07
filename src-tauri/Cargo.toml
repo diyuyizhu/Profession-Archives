@@ -1,0 +1,18 @@
+[package]
+name = "profession-archives"
+version = "0.2.0"
+description = "本地优先的个人生涯大脑 + 求职面试全生命周期管理平台"
+edition = "2021"
+
+# main.rs 引用 profession_archives_lib::run()，需显式命名 lib target
+[lib]
+name = "profession_archives_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

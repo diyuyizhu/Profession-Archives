@@ -42,3 +42,13 @@ pip-log.txt
 # Binary output
 *.exe
 
+# 本地运行数据（SQLite 数据库/日志，含测试数据，不提交）
+.pa-data/
+
+# 浏览器插件（独立项目）构建产物 / 生成类型
+extension/.output/
+extension/.wxt/
+
+# Tauri 生成目录（tauri-build 产出，随编译重建）
+src-tauri/gen/
+

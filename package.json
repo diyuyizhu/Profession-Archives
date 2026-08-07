@@ -4,14 +4,24 @@
   "private": true,
   "description": "本地优先的个人生涯大脑 + 求职面试全生命周期管理平台",
   "type": "module",
-  "workspaces": ["frontend", "shared"],
+  "workspaces": [
+    "frontend",
+    "shared",
+    "server"
+  ],
   "scripts": {
     "dev": "npm run dev -w frontend",
     "build": "npm run build -w frontend",
     "preview": "npm run preview -w frontend",
-    "typecheck": "npm run typecheck -w frontend"
+    "typecheck": "npm run typecheck -w frontend && npm run typecheck -w server",
+    "server": "npm run dev -w server"
   },
   "engines": {
     "node": ">=20"
+  },
+  "allowScripts": {
+    "better-sqlite3@11.10.0": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true
   }
 }

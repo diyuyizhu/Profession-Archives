@@ -146,8 +146,8 @@ GET    /api/cloud/chain/verify/:hash
 | `journal_entries` + | 日记/成就/里程碑（A1） | entry_type/title/content_md/occurred_at |
 | `certificates` + | 证书/资质（扩展方向） | issuing_body/cert_number/expiry_date/blockchain_tx(预留) |
 | `applications` * | 投递记录 | + 完整状态机 |
-| `application_events` + | 状态变更日志 | from/to_status/changed_at |
-| `interviews` + | 面试轮次（C1） | interview_type/questions(JSON)/answers(JSON)/self_rating/result |
+| `application_events` + | 状态变更日志 | from/to/at（与 `@pa/shared` ApplicationEvent 契约一致，server 落地时按此建列） |
+| `interviews` + | 面试轮次（C1） | interview_type/qa(JSON 数组 `[{question,answer}]`)/self_rating/result（与 `@pa/shared` Interview 契约一致） |
 | `reflections` + | 面试复盘（C3） | content_md/ai_generated |
 | `question_bank` + | 面经题库（C4） | question/category/difficulty/industry |
 | `learning_plans` + `learning_tasks` + | 学习计划（F2/F3） | |

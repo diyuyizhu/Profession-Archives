@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>星海科技 · 安全工程师岗位投递（测试表单）</title>
+    <style>
+      body {
+        font-family: 'Microsoft YaHei', sans-serif;
+        max-width: 520px;
+        margin: 40px auto;
+        padding: 0 20px;
+        color: #222;
+      }
+      h1 { font-size: 20px; }
+      label { display: block; margin-bottom: 14px; font-size: 14px; }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+        margin-top: 4px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+      }
+      button {
+        padding: 10px 22px;
+        font-size: 14px;
+        background: #2f6fed;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      #result { margin-top: 16px; font-size: 13px; color: #2f6fed; }
+    </style>
+  </head>
+  <body>
+    <h1>星海科技 · 安全工程师 岗位投递</h1>
+    <p style="font-size: 13px; color: #666">
+      这是模拟"公司官网投递表单"，用于测试浏览器插件：填充 + 人工确认 + 投递回传。
+    </p>
+    <form id="apply-form" action="javascript:void(0)">
+      <label>姓名 <input name="fullname" id="fullname" autocomplete="name" /></label>
+      <label>邮箱 <input name="email" type="email" autocomplete="email" /></label>
+      <label>联系电话 <input name="phone" type="tel" autocomplete="tel" /></label>
+      <label>意向岗位 <input name="position" value="安全工程师" /></label>
+      <label>个人简介 <textarea name="summary" rows="3" style="width: 100%; box-sizing: border-box; margin-top: 4px"></textarea></label>
+      <button type="submit">提交申请</button>
+    </form>
+    <div id="result"></div>
+    <script>
+      const form = document.getElementById('apply-form')
+      const result = document.getElementById('result')
+      form.addEventListener('submit', (e) => {
+        e.preventDefault()
+        const data = Object.fromEntries(new FormData(form).entries())
+        result.textContent = '已提交：' + JSON.stringify(data)
+        // 模拟提交成功后触发投递回传（真实场景由插件监听 submit 完成）
+        console.log('SUBMITTED', data)
+      })
+    </script>
+  </body>
+</html>

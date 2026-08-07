@@ -344,3 +344,16 @@ body {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
+
+/* ---------- 仪表盘网格卡片（CSS Grid 单元） ----------
+   移动端单列；md+ 按 --dash-w/--dash-h 占位（拖拽调整大小） */
+.dash-card {
+  grid-column: span 1;
+  grid-row: span 1;
+}
+@media (min-width: 768px) {
+  .dash-card {
+    grid-column: span var(--dash-w, 2);
+    grid-row: span var(--dash-h, 2);
+  }
+}
