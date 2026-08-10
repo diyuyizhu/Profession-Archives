@@ -122,18 +122,18 @@ async function startRecording(): Promise<void> {
   recordSeconds.value = 0
   recordTimer = window.setInterval(() => recordSeconds.value++, 1000)
 
-  // 桌面版：系统级录制（ffmpeg 屏幕 + 系统声音，由 src-tauri 实现）
+  // 桌面版优先系统级录制（ffmpeg 屏幕 + 系统声音）；ffmpeg 缺失时自动回退网页录屏
   if (isDesktop.value) {
     try {
       await tauriInvoke('start_system_recording', {
         label: `${app.value.company}-面试-${new Date().toISOString().slice(0, 10)}`,
       })
+      return
     } catch (e) {
       stopRecordingTimer()
       recording.value = false
-      recordError.value = `系统级录制启动失败：${e}`
+      recordError.value = `系统级录制不可用（${e}），已回退网页录屏（仅标签页声音+麦克风）`
     }
-    return
   }
 
   // 网页降级：屏幕（含标签页声音）+ 可选麦克风混音

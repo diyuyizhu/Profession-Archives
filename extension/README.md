@@ -30,11 +30,16 @@ npm run dev      # wxt dev（热更新）
 npm run build    # 构建到 .output/chrome-mv3
 ```
 
-## 加载到浏览器测试
+## 分发 / 导入
 
-1. `npm run build` 生成 `.output/chrome-mv3/`
+- **打包 zip（分发 / 商店上传）**：`npm run zip` → `.output/pa-extension-*.zip`
+- Chrome 安装 zip：**不能直接拖 zip 导入**。需先解压 zip，再用开发者模式「加载已解压的扩展程序」选择解压后的目录；或签名成 `.crx` 分发（内部渠道可解压加载）
+
+## 加载到浏览器测试（开发者模式）
+
+1. `npm run build` 生成 `.output/chrome-mv3/`（或用 `npm run zip` 后解压）
 2. Chrome / Edge 打开 `chrome://extensions`（Edge 用 `edge://extensions`）
-3. 开启"开发者模式" → "加载已解压的扩展程序" → 选择 `.output/chrome-mv3/`
+3. 开启"开发者模式" → "加载已解压的扩展程序" → 选择 `.output/chrome-mv3/`（或解压后的目录）
 4. 先启动桌面端本地服务（`PA_PAIRING_TOKEN=xxx npx tsx server/src/index.ts`），在 popup 粘贴配对码
 5. 打开 `tests/demo-submit-form.html`（模拟官网投递表单）→ 点 popup「填充投递表单」→ 人工核对后提交
 

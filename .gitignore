@@ -52,3 +52,8 @@ extension/.wxt/
 # Tauri 生成目录（tauri-build 产出，随编译重建）
 src-tauri/gen/
 
+# 发布产物（可执行/安装包不提交；release/README.md 保留）
+release/*.exe
+release/*.msi
+release/*.zip
+
