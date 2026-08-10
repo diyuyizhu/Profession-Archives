@@ -30,18 +30,25 @@ npm run dev      # wxt dev（热更新）
 npm run build    # 构建到 .output/chrome-mv3
 ```
 
-## 分发 / 导入
+## 加载到浏览器（正确方式）
 
-- **打包 zip（分发 / 商店上传）**：`npm run zip` → `.output/pa-extension-*.zip`
-- Chrome 安装 zip：**不能直接拖 zip 导入**。需先解压 zip，再用开发者模式「加载已解压的扩展程序」选择解压后的目录；或签名成 `.crx` 分发（内部渠道可解压加载）
+> ⚠️ **Chrome 不能直接拖 zip 安装**。请用"已解压目录"加载——构建产物 `.output/chrome-mv3/` 本身就是现成目录：
 
-## 加载到浏览器测试（开发者模式）
-
-1. `npm run build` 生成 `.output/chrome-mv3/`（或用 `npm run zip` 后解压）
+1. `npm run build` 生成 `.output/chrome-mv3/`
 2. Chrome / Edge 打开 `chrome://extensions`（Edge 用 `edge://extensions`）
-3. 开启"开发者模式" → "加载已解压的扩展程序" → 选择 `.output/chrome-mv3/`（或解压后的目录）
-4. 先启动桌面端本地服务（`PA_PAIRING_TOKEN=xxx npx tsx server/src/index.ts`），在 popup 粘贴配对码
-5. 打开 `tests/demo-submit-form.html`（模拟官网投递表单）→ 点 popup「填充投递表单」→ 人工核对后提交
+3. 开启右上角"**开发者模式**"
+4. 点"**加载已解压的扩展程序**" → 选择 `F:\project\Profession-Archives\extension\.output\chrome-mv3`
+5. 加载成功即出现"Profession-Archives 助手"卡片（有报错会红字显示在此）
+
+## 分发 / 导入（zip 仅用于分发）
+
+- `npm run zip` → `.output/pa-extension-*.zip`（用于分发 / 商店上传）
+- 拿到 zip 的用户：**先解压**到任意目录，再按上面的开发者模式加载解压目录；或签名成 `.crx` 双击安装
+
+## 联调
+
+1. 先启动桌面端本地服务（`PA_PAIRING_TOKEN=xxx npx tsx server/src/index.ts`），在 popup 粘贴配对码
+2. 打开 `tests/demo-submit-form.html`（模拟官网投递表单）→ 点 popup「填充投递表单」→ 人工核对后提交
 
 ## 验证状态
 

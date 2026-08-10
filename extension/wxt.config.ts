@@ -9,8 +9,20 @@ export default defineConfig({
   manifest: {
     name: 'Profession-Archives 助手',
     description: '连接本地生涯档案：采集岗位、自动填充官网投递表单、回传投递状态、桌面采集（系统音频）。',
-    permissions: ['storage', 'activeTab', 'tabs', 'desktopCapture'],
+    // 最小权限：storage + activeTab（当前页交互）+ desktopCapture（系统音频）；tabs 冗余已移除
+    permissions: ['storage', 'activeTab', 'desktopCapture'],
     host_permissions: ['<all_urls>'],
+    icons: {
+      32: 'icons/icon-32.png',
+      48: 'icons/icon-48.png',
+      128: 'icons/icon-128.png',
+    },
+    action: {
+      default_icon: {
+        32: 'icons/icon-32.png',
+        128: 'icons/icon-128.png',
+      },
+    },
     // 本地桥通信（仅 127.0.0.1；配对 token 在 popup 中粘贴）
     web_accessible_resources: [
       {
