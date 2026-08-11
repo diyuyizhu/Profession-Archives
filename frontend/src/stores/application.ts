@@ -130,18 +130,13 @@ export function transitionTargets(
 export const useApplicationStore = defineStore('application', () => {
   // 首次运行（无投递数据）：投递与事件用同一份 demo 引用，
   // 保证漏斗"曾经到达"精确；非首次则读存储并经结构校验。
+  // 首次启动不预置示例投递：空看板开始（演示数据仅"重置为演示"时生成）
   const storedApps = load<Application[]>(APPS_KEY)
   const storedEvents = load<ApplicationEvent[]>(EVENTS_KEY)
   const firstRun = storedApps === null
 
-  const applications = ref<Application[]>(sanitizeApplications(storedApps ?? buildDemoApplications()))
-  const events = ref<ApplicationEvent[]>(
-    storedEvents
-      ? sanitizeEvents(storedEvents)
-      : firstRun
-        ? buildDemoEvents(applications.value)
-        : [],
-  )
+  const applications = ref<Application[]>(sanitizeApplications(storedApps ?? []))
+  const events = ref<ApplicationEvent[]>(storedEvents ? sanitizeEvents(storedEvents) : [])
 
   // 实时反映：一旦有了投递即视为自定义数据（避免首次加载后仍报 demo）
   const hasCustomData = computed(() => !firstRun || applications.value.length > 0)

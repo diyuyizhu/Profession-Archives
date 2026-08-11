@@ -15,6 +15,27 @@ export function uid(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+/** 空档案（首次启动不预置示例数据；用户从零开始） */
+export function buildEmptyProfile(): Profile {
+  const ts = nowIso()
+  return {
+    id: uid('pf'),
+    full_name: '',
+    headline: '',
+    email: '',
+    phone: '',
+    summary: '',
+    skills: [],
+    experiences: [],
+    education: [],
+    projects: [],
+    journal: [],
+    card_theme: 'trae',
+    created_at: ts,
+    updated_at: ts,
+  }
+}
+
 const ts = nowIso()
 
 export function buildDemoProfile(): Profile {

@@ -7,7 +7,7 @@ import { ref } from 'vue'
 
 const KEY = 'pa-board-prefs-v1'
 
-export type BoardViewMode = 'board' | 'list'
+export type BoardViewMode = 'board' | 'list' | 'pipeline'
 export type BoardSortMode = 'updated' | 'applied' | 'importance' | 'title'
 export type BoardFieldKey = 'channel' | 'date' | 'tags' | 'notes' | 'importance'
 
@@ -43,7 +43,8 @@ function load(): BoardPrefs {
       }
     }
     return {
-      viewMode: parsed.viewMode === 'list' ? 'list' : 'board',
+      viewMode:
+        parsed.viewMode === 'list' || parsed.viewMode === 'pipeline' ? parsed.viewMode : 'board',
       sortMode:
         parsed.sortMode === 'applied' || parsed.sortMode === 'importance' || parsed.sortMode === 'title'
           ? parsed.sortMode

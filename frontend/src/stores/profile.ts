@@ -7,7 +7,7 @@ import { buildCareerCard } from '@pa/shared/career'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { buildDemoProfile, uid } from '@/data/seed'
+import { buildDemoProfile, buildEmptyProfile, uid } from '@/data/seed'
 
 const STORAGE_KEY = 'pa-profile-v1'
 
@@ -33,7 +33,8 @@ function makeId(): string {
 }
 
 export const useProfileStore = defineStore('profile', () => {
-  const profile = ref<Profile>(loadProfile() ?? buildDemoProfile())
+  // 首次启动不预置示例档案：空档案开始（演示数据仅"重置为演示"时生成）
+  const profile = ref<Profile>(loadProfile() ?? buildEmptyProfile())
 
   const careerCard = computed<CareerCardData>(() => buildCareerCard(profile.value))
   const hasCustomData = ref(loadProfile() !== null)

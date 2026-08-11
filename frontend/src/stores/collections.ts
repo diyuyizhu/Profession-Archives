@@ -19,14 +19,9 @@ const POOL_COLORS = [
   'text-[#f97316]',
 ]
 
-/** 首次使用的示例池子（用户可增删改） */
+/** 首次使用：空池子（不预置示例，用户自建） */
 function defaultPools(): Collection[] {
-  const ts = new Date().toISOString()
-  return [
-    { id: uid('cl'), name: '项目实习', color: POOL_COLORS[0], created_at: ts },
-    { id: uid('cl'), name: '学校经历', color: POOL_COLORS[1], created_at: ts },
-    { id: uid('cl'), name: '技术栈', color: POOL_COLORS[2], created_at: ts },
-  ]
+  return []
 }
 
 function load(): Collection[] {

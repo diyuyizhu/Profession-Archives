@@ -97,9 +97,12 @@ const sortedApps = computed(() =>
   [...filteredApps.value].sort((a, b) => sortCompare(a, b, prefs.sortMode)),
 )
 
-function toggleView(): void {
-  prefsStore.set({ viewMode: prefs.viewMode === 'board' ? 'list' : 'board' })
-}
+/** 视图切换（三态分段） */
+const VIEW_OPTIONS = [
+  { k: 'board', l: '看板' },
+  { k: 'list', l: '列表' },
+  { k: 'pipeline', l: '全流程' },
+] as const
 
 function toggleTag(t: string): void {
   if (filterTags.value.has(t)) filterTags.value.delete(t)
@@ -114,6 +117,41 @@ function clearFilters(): void {
 
 function countOf(status: ApplicationStatus): number {
   return (board.value[status] ?? []).length
+}
+
+/** 某投递的事件（按时间正序） */
+function eventsOf(appId: string): Array<{ from: ApplicationStatus | null; to: ApplicationStatus; at: string }> {
+  return store.events
+    .filter((e) => e.application_id === appId)
+    .sort((a, b) => (a.at < b.at ? -1 : 1))
+}
+
+/** 全流程泳道阶段节点：前置 + 该投递的轮次（到达/当前状态） */
+function pipelineStages(
+  app: Application,
+): Array<{
+  status: ApplicationStatus
+  label: string
+  reached: boolean
+  current: boolean
+  dot: string
+  text: string
+}> {
+  const total = app.total_rounds ?? 3
+  const stages: ApplicationStatus[] = ['backlog', 'applied', 'viewed']
+  for (let i = 1; i <= total; i++) stages.push(`round_${i}`)
+  const reachedSet = new Set(eventsOf(app.id).map((e) => e.to))
+  return stages.map((s) => {
+    const meta = statusMeta(s, total)
+    return {
+      status: s,
+      label: meta.label,
+      reached: reachedSet.has(s) || app.status === s,
+      current: app.status === s,
+      dot: meta.dot,
+      text: meta.text,
+    }
+  })
 }
 
 function openDetail(id: string): void {
@@ -257,12 +295,21 @@ onBeforeUnmount(() => {
             <option :value="null">全部渠道</option>
             <option v-for="c in allChannels" :key="c" :value="c">{{ c }}</option>
           </select>
-          <button
-            class="rounded-lg border border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-[12px] text-[rgba(245,249,254,0.6)] transition-colors hover:border-[rgba(50,240,140,0.4)] hover:text-[#32f08c]"
-            @click="toggleView"
-          >
-            {{ prefs.viewMode === 'board' ? '☷ 列表视图' : '▦ 看板视图' }}
-          </button>
+          <div class="flex shrink-0 overflow-hidden rounded-lg border border-[rgba(255,255,255,0.12)]">
+            <button
+              v-for="m in VIEW_OPTIONS"
+              :key="m.k"
+              class="px-2.5 py-1.5 text-[11.5px] transition-colors"
+              :class="
+                prefs.viewMode === m.k
+                  ? 'bg-[rgba(50,240,140,0.14)] text-[#32f08c]'
+                  : 'text-[rgba(245,249,254,0.55)] hover:bg-[rgba(237,239,242,0.05)] hover:text-[#f5f9fe]'
+              "
+              @click="prefsStore.set({ viewMode: m.k })"
+            >
+              {{ m.l }}
+            </button>
+          </div>
           <button
             class="rounded-lg border border-[rgba(50,240,140,0.35)] bg-[rgba(50,240,140,0.06)] px-3 py-1.5 text-[12px] font-medium text-[#32f08c]"
             @click="showSettings = true"
@@ -427,7 +474,7 @@ onBeforeUnmount(() => {
       </section>
 
       <!-- ═══════ 列表视图 ═══════ -->
-      <section v-else class="card-glass overflow-x-auto p-2">
+      <section v-else-if="prefs.viewMode === 'list'" class="card-glass overflow-x-auto p-2">
         <table class="w-full text-left">
           <thead>
             <tr class="border-b border-[rgba(255,255,255,0.08)] text-[11px] text-[rgba(245,249,254,0.4)]">
@@ -479,6 +526,72 @@ onBeforeUnmount(() => {
           没有匹配的投递
         </div>
       </section>
+
+      <!-- ═══════ 全流程视图（以公司/岗位为单位） ═══════ -->
+      <section v-else class="space-y-3">
+        <div class="text-[11.5px] text-[rgba(245,249,254,0.4)]">
+          每个投递一行，展示从备选到当前阶段的完整流程（点击进入详情档案）
+        </div>
+        <div
+          v-for="app in sortedApps"
+          :key="app.id"
+          class="card-glass cursor-pointer p-4 transition-colors hover:border-[rgba(50,240,140,0.3)]"
+          @click="openDetail(app.id)"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div class="truncate text-[14px] font-semibold text-[#f5f9fe]">{{ app.title }}</div>
+              <div class="mt-0.5 truncate text-[12px] text-[rgba(245,249,254,0.5)]">
+                {{ app.company }}<span v-if="app.channel"> · {{ app.channel }}</span>
+              </div>
+            </div>
+            <span
+              class="shrink-0 rounded-full border px-2.5 py-0.5 text-[11px]"
+              :class="[statusMeta(app.status, app.total_rounds).chip, statusMeta(app.status, app.total_rounds).text]"
+            >
+              {{ statusMeta(app.status, app.total_rounds).label }}
+            </span>
+          </div>
+
+          <!-- 流程泳道 -->
+          <div class="mt-3 flex items-center overflow-x-auto pb-1">
+            <template v-for="(node, i) in pipelineStages(app)" :key="node.status">
+              <div class="flex shrink-0 flex-col items-center gap-1">
+                <span
+                  class="h-3 w-3 rounded-full border-2"
+                  :class="
+                    node.current
+                      ? 'border-[#32f08c] bg-[#32f08c] shadow-[0_0_6px_rgba(50,240,140,0.8)]'
+                      : node.reached
+                        ? node.dot
+                        : 'border-[rgba(255,255,255,0.2)] bg-transparent'
+                  "
+                />
+                <span
+                  class="whitespace-nowrap px-0.5 text-[10px]"
+                  :class="node.current ? 'font-medium text-[#32f08c]' : node.reached ? node.text : 'text-[rgba(245,249,254,0.25)]'"
+                >
+                  {{ node.label }}
+                </span>
+              </div>
+              <div
+                v-if="i < pipelineStages(app).length - 1"
+                class="h-0.5 min-w-3 flex-1 rounded"
+                :class="pipelineStages(app)[i]?.reached ? 'bg-[rgba(50,240,140,0.35)]' : 'bg-[rgba(255,255,255,0.08)]'"
+              />
+            </template>
+          </div>
+
+          <!-- 事件简史 -->
+          <div v-if="eventsOf(app.id).length" class="mt-2 truncate text-[10.5px] text-[rgba(245,249,254,0.35)]">
+            {{ eventsOf(app.id).slice(-3).map((e) => `${statusMeta(e.from ?? e.to).label} → ${statusMeta(e.to).label}`).join(' · ') }}
+          </div>
+        </div>
+
+        <div v-if="!sortedApps.length" class="card-glass py-10 text-center text-[12px] text-[rgba(245,249,254,0.3)]">
+          没有匹配的投递
+        </div>
+      </section>
     </div>
 
     <!-- 编辑弹窗 -->
@@ -514,7 +627,7 @@ onBeforeUnmount(() => {
           <div class="mb-2 text-[12px] font-medium text-[rgba(245,249,254,0.6)]">视图</div>
           <div class="flex gap-2">
             <button
-              v-for="mode in ([{k:'board',l:'看板视图'},{k:'list',l:'列表视图'}] as const)"
+              v-for="mode in ([{k:'board',l:'看板视图'},{k:'list',l:'列表视图'},{k:'pipeline',l:'全流程'}] as const)"
               :key="mode.k"
               class="flex-1 rounded-lg border py-2 text-[12.5px] transition-colors"
               :class="prefs.viewMode === mode.k ? 'border-[rgba(50,240,140,0.5)] bg-[rgba(50,240,140,0.1)] text-[#32f08c]' : 'border-[rgba(255,255,255,0.1)] text-[rgba(245,249,254,0.55)]'"
