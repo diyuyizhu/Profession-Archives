@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
  * popup 面板：配对 + 采集岗位 + 填充投递表单 + 清除高亮。
+ * 风格与主应用一致（暗色 #0a0b0d + 薄荷绿 #32f08c + 毛玻璃卡片）。
  */
 import { onMounted, ref } from 'vue'
 
@@ -65,38 +66,174 @@ async function clearFill(): Promise<void> {
 </script>
 
 <template>
-  <div class="w-72 p-4 font-sans text-sm text-gray-800">
-    <div class="mb-3 flex items-center justify-between">
-      <span class="font-bold">Profession-Archives 助手</span>
-      <span class="text-xs text-gray-400">v0.1</span>
+  <div class="pa-popup">
+    <!-- 头部 -->
+    <div class="pa-header">
+      <span class="pa-title">Profession-Archives 助手</span>
+      <span class="pa-version">v0.1</span>
     </div>
 
-    <label class="mb-1 block text-xs text-gray-500">配对码（桌面端「插件配对」页复制）</label>
-    <input
-      v-model="pairingCode"
-      class="mb-2 w-full rounded border px-2 py-1 text-xs"
-      placeholder="粘贴配对码"
-    />
-    <div class="mb-3 flex items-center justify-between">
-      <button class="rounded bg-blue-600 px-3 py-1 text-xs text-white" @click="savePairing">保存配对</button>
-      <span class="text-xs text-gray-500">{{ status }}</span>
+    <!-- 配对 -->
+    <label class="pa-label" for="pairing">配对码（桌面端「插件配对」页复制）</label>
+    <input id="pairing" v-model="pairingCode" class="pa-input" placeholder="粘贴配对码" />
+    <div class="pa-row">
+      <button class="pa-btn pa-btn-ghost" @click="savePairing">保存配对</button>
+      <span class="pa-status" :class="{ on: status !== '未配对' }">
+        <i class="pa-dot" />
+        {{ status }}
+      </span>
     </div>
 
-    <button class="mb-2 w-full rounded border border-blue-300 px-3 py-1.5 text-xs" @click="collectJob">
-      采集当前岗位 → 看板
-    </button>
-    <button class="mb-2 w-full rounded bg-emerald-600 px-3 py-1.5 text-xs text-white" @click="fillForm">
-      填充投递表单（人工确认后提交）
-    </button>
-    <button class="mb-2 w-full rounded border px-3 py-1.5 text-xs" @click="clearFill">
-      清除填充高亮
-    </button>
+    <!-- 操作 -->
+    <button class="pa-btn pa-btn-ghost" @click="collectJob">采集当前岗位 → 看板</button>
+    <button class="pa-btn pa-btn-primary" @click="fillForm">填充投递表单</button>
+    <button class="pa-btn pa-btn-ghost" @click="clearFill">清除填充高亮</button>
 
-    <div v-if="actionMsg" class="mt-2 rounded bg-amber-50 px-2 py-1.5 text-xs leading-relaxed">
-      {{ actionMsg }}
-    </div>
-    <div class="mt-2 text-[11px] leading-relaxed text-gray-400">
-      合规：不自动提交、不破验证码 —— 填充后请人工核对并在页面点击提交。
-    </div>
+    <!-- 反馈 -->
+    <div v-if="actionMsg" class="pa-msg">{{ actionMsg }}</div>
+
+    <!-- 合规说明 -->
+    <div class="pa-foot">合规：不自动提交、不破验证码 —— 填充后请人工核对并在页面点击提交。</div>
   </div>
 </template>
+
+<style>
+.pa-popup {
+  width: 320px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: #f5f9fe;
+}
+
+/* 头部 */
+.pa-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+.pa-title {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: linear-gradient(90deg, #3ee1a3, #32f08c 40%, #a0fde7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.pa-version {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: rgba(245, 249, 254, 0.35);
+}
+
+/* 标签 / 输入 */
+.pa-label {
+  display: block;
+  font-size: 11px;
+  color: rgba(245, 249, 254, 0.55);
+  margin-top: 4px;
+}
+.pa-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(237, 239, 242, 0.06);
+  color: #f5f9fe;
+  font-size: 12.5px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.pa-input::placeholder {
+  color: rgba(245, 249, 254, 0.3);
+}
+.pa-input:focus {
+  border-color: rgba(50, 240, 140, 0.6);
+  box-shadow: 0 0 0 3px rgba(50, 240, 140, 0.12);
+}
+
+/* 行 / 状态 */
+.pa-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2px 0 6px;
+}
+.pa-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: rgba(245, 249, 254, 0.45);
+}
+.pa-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(245, 249, 254, 0.25);
+}
+.pa-status.on .pa-dot {
+  background: #32f08c;
+  box-shadow: 0 0 6px rgba(50, 240, 140, 0.7);
+}
+.pa-status.on {
+  color: #32f08c;
+}
+
+/* 按钮 */
+.pa-btn {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.pa-btn-ghost {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(237, 239, 242, 0.05);
+  color: rgba(245, 249, 254, 0.75);
+}
+.pa-btn-ghost:hover {
+  border-color: rgba(50, 240, 140, 0.4);
+  color: #32f08c;
+  background: rgba(50, 240, 140, 0.06);
+}
+.pa-btn-primary {
+  border: 1px solid rgba(50, 240, 140, 0.5);
+  background: rgba(50, 240, 140, 0.12);
+  color: #32f08c;
+  font-weight: 500;
+}
+.pa-btn-primary:hover {
+  background: rgba(50, 240, 140, 0.2);
+  box-shadow: 0 0 12px rgba(50, 240, 140, 0.25);
+}
+
+/* 反馈提示 */
+.pa-msg {
+  border-radius: 8px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.08);
+  color: #fbbf24;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* 底部说明 */
+.pa-foot {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: rgba(245, 249, 254, 0.35);
+}
+</style>
