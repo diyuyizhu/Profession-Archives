@@ -189,11 +189,11 @@ body {
 /* ---------- 卡片：毛玻璃（12px 圆角） ---------- */
 .card-glass {
   position: relative;
-  background: rgba(18, 20, 24, 0.3);
+  background: rgba(20, 22, 27, 0.64);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  backdrop-filter: blur(28px) saturate(1.6);
-  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  backdrop-filter: blur(36px) saturate(1.7);
+  -webkit-backdrop-filter: blur(36px) saturate(1.7);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.4),
     0 12px 32px rgba(0, 0, 0, 0.35),
@@ -207,7 +207,7 @@ body {
 }
 
 .card-glass:hover {
-  background: rgba(18, 20, 24, 0.38);
+  background: rgba(20, 22, 27, 0.74);
   border-color: rgba(50, 240, 140, 0.35);
   transform: translateY(-2px);
   box-shadow:

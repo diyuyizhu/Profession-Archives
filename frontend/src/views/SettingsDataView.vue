@@ -4,6 +4,8 @@
  * 数据全部存 localStorage（key 前缀 pa-），导出为单个 JSON 文件。
  */
 import { computed, ref } from 'vue'
+import { open, save } from '@tauri-apps/plugin-dialog'
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 
 import PageHeader from '@/components/PageHeader.vue'
 import PrimaryButton from '@/components/PrimaryButton.vue'
@@ -26,6 +28,11 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const flash = ref<{ kind: 'ok' | 'error'; text: string } | null>(null)
 let flashTimer: ReturnType<typeof setTimeout> | undefined
 
+/** 是否桌面版（Tauri）：导出/导入调用系统文件对话框 */
+const isDesktop = Boolean(
+  (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__,
+)
+
 function notify(kind: 'ok' | 'error', text: string): void {
   flash.value = { kind, text }
   clearTimeout(flashTimer)
@@ -47,16 +54,86 @@ function collectAll(): Record<string, string> {
   return data
 }
 
-function exportData(): void {
+const EXPORT_NAME = `profession-archives-export-${new Date().toISOString().slice(0, 10)}.json`
+
+async function exportData(): Promise<void> {
   const payload = { app: 'profession-archives', exportedAt: new Date().toISOString(), data: collectAll() }
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `profession-archives-export-${new Date().toISOString().slice(0, 10)}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-  notify('ok', '已导出备份文件')
+  const text = JSON.stringify(payload, null, 2)
+  try {
+    if (isDesktop) {
+      // 桌面版：系统保存对话框，用户选位置
+      const path = await save({
+        defaultPath: EXPORT_NAME,
+        filters: [{ name: 'JSON 备份', extensions: ['json'] }],
+      })
+      if (!path) return // 用户取消
+      await writeTextFile(path, text)
+      notify('ok', `已导出备份：${path}`)
+    } else {
+      // 浏览器版：下载
+      const blob = new Blob([text], { type: 'application/json;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = EXPORT_NAME
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      notify('ok', '已导出备份文件')
+    }
+  } catch (err) {
+    notify('error', `导出失败：${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
+/** 解析并写入备份（校验 → 原子写入 → 清理旧 key） */
+function applyImportContent(text: string): void {
+  try {
+    const parsed = JSON.parse(text) as { app?: string; data?: unknown }
+    if (parsed.app !== 'profession-archives') throw new Error('不是本应用的备份文件')
+    const raw = parsed.data
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('备份格式不正确')
+    const entries = Object.entries(raw as Record<string, unknown>).filter(([k]) =>
+      k.startsWith('pa-'),
+    ) as [string, unknown][]
+    for (const [, value] of entries) {
+      if (typeof value !== 'string') throw new Error('备份包含非文本数据')
+    }
+    // 原子化：先校验，再写入新 key，成功后才清理不再使用的旧 key
+    for (const [key, value] of entries as [string, string][]) {
+      try {
+        localStorage.setItem(key, value)
+      } catch {
+        throw new Error('写入失败：存储不可用或空间不足（可能已写入部分数据，请重新导入完整备份）')
+      }
+    }
+    const newKeys = new Set(entries.map(([k]) => k))
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i)
+      if (key?.startsWith('pa-') && !newKeys.has(key)) localStorage.removeItem(key)
+    }
+    notify('ok', '导入成功，正在刷新…')
+    setTimeout(() => window.location.reload(), 800)
+  } catch (err) {
+    notify(
+      'error',
+      err instanceof Error ? `导入失败：${err.message}` : '导入失败：文件格式不正确',
+    )
+  }
+}
+
+/** 桌面版导入：系统打开对话框选备份文件 */
+async function desktopImport(): Promise<void> {
+  try {
+    const path = await open({
+      multiple: false,
+      filters: [{ name: 'JSON 备份', extensions: ['json'] }],
+    })
+    if (!path) return // 用户取消
+    const text = await readTextFile(String(path))
+    applyImportContent(text)
+  } catch (err) {
+    notify('error', `导入失败：${err instanceof Error ? err.message : String(err)}`)
+  }
 }
 
 function onPickFile(e: Event): void {
@@ -65,39 +142,7 @@ function onPickFile(e: Event): void {
   if (!file) return
   const reader = new FileReader()
   reader.onload = () => {
-    try {
-      const parsed = JSON.parse(String(reader.result)) as { app?: string; data?: unknown }
-      if (parsed.app !== 'profession-archives') throw new Error('不是本应用的备份文件')
-      const raw = parsed.data
-      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('备份格式不正确')
-      const entries = Object.entries(raw as Record<string, unknown>).filter(([k]) =>
-        k.startsWith('pa-'),
-      ) as [string, unknown][]
-      for (const [, value] of entries) {
-        if (typeof value !== 'string') throw new Error('备份包含非文本数据')
-      }
-      // 原子化：先校验，再写入新 key，成功后才清理不再使用的旧 key；
-      // 任一步失败都保留旧数据，不产生"半套数据"。
-      for (const [key, value] of entries as [string, string][]) {
-        try {
-          localStorage.setItem(key, value)
-        } catch {
-          throw new Error('写入失败：存储不可用或空间不足（可能已写入部分数据，请重新导入完整备份）')
-        }
-      }
-      const newKeys = new Set(entries.map(([k]) => k))
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i)
-        if (key?.startsWith('pa-') && !newKeys.has(key)) localStorage.removeItem(key)
-      }
-      notify('ok', '导入成功，正在刷新…')
-      setTimeout(() => window.location.reload(), 800)
-    } catch (err) {
-      notify(
-        'error',
-        err instanceof Error ? `导入失败：${err.message}` : '导入失败：文件格式不正确',
-      )
-    }
+    applyImportContent(String(reader.result))
   }
   reader.readAsText(file)
   input.value = ''
@@ -178,7 +223,7 @@ function formatBytes(n: number): string {
           <p class="mt-1 text-[11.5px] leading-relaxed text-[rgba(245,249,254,0.45)]">
             选择备份文件，覆盖本地数据并刷新
           </p>
-          <SecondaryButton class="mt-3" @click="fileInput?.click()">选择备份文件</SecondaryButton>
+          <SecondaryButton class="mt-3" @click="isDesktop ? desktopImport() : fileInput?.click()">选择备份文件</SecondaryButton>
           <input ref="fileInput" type="file" accept="application/json" class="hidden" @change="onPickFile" />
         </div>
       </section>
