@@ -7,6 +7,8 @@ import { DEFAULT_AI_CONFIG } from '@pa/shared'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+import { postToBridge } from '@/lib/bridge'
+
 const KEY = 'pa-ai-config-v1'
 
 /** 结构校验：逐字段 typeof 归一，坏数据回退默认值（与 application store 模式同级） */
@@ -53,6 +55,8 @@ export const useAIConfigStore = defineStore('aiConfig', () => {
   function persist(): void {
     try {
       localStorage.setItem(KEY, JSON.stringify(config.value))
+      // 同步 AI 配置到桥（桥据此调 DeepSeek/Ollama；桥离线静默失败）
+      postToBridge('/api/bridge/sync', { aiConfig: config.value })
     } catch (err) {
       console.error('[aiConfig] 保存失败', err)
       throw err

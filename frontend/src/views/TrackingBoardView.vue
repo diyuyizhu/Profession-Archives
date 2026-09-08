@@ -12,24 +12,32 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import ApplicationEditModal from '@/components/application/ApplicationEditModal.vue'
+import BridgeSyncPanel from '@/components/BridgeSyncPanel.vue'
 import Modal from '@/components/Modal.vue'
 import ModuleTabs, { type ModuleTab } from '@/components/ModuleTabs.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import { generateResume } from '@/lib/aiClient'
 import { transitionTargets, useApplicationStore } from '@/stores/application'
 import { useArchivesStore } from '@/stores/archives'
 import { FIELD_LABELS, useBoardPrefsStore } from '@/stores/boardPrefs'
 import { useInterviewStore } from '@/stores/interview'
+import { useProfileStore } from '@/stores/profile'
 import { useQuestionBankStore } from '@/stores/questionBank'
+import { useResumeTreeStore } from '@/stores/resumeTree'
 
 const store = useApplicationStore()
 const prefsStore = useBoardPrefsStore()
 const prefs = prefsStore.prefs
 const router = useRouter()
+const profileStore = useProfileStore()
+const resumeTree = useResumeTreeStore()
 
 /** 模块内 Tab */
 const tabs: ModuleTab[] = [
   { id: 'board', label: '看板', path: '/tracking' },
   { id: 'collect', label: '岗位采集', path: '/tracking/collect' },
+  { id: 'import', label: '批量导入', path: '/tracking/import' },
+  { id: 'interview', label: '面试复盘', path: '/interview' },
   { id: 'stats', label: '投递统计', path: '/tracking/stats' },
   { id: 'resume', label: '特化简历', path: '/tracking/resume' },
 ]
@@ -52,6 +60,21 @@ const allTags = computed(() => {
   return [...set].sort((a, b) => a.localeCompare(b, 'zh-CN'))
 })
 
+/** 全部分组维度（去重排序，供筛选） */
+const allGroups = computed(() => {
+  const set = new Set<string>()
+  for (const a of store.applications) for (const g of a.groups ?? []) if (g) set.add(g)
+  return [...set].sort((a, b) => a.localeCompare(b, 'zh-CN'))
+})
+
+/** 分组筛选（多选；空集合 = 不限） */
+const filterGroups = ref<Set<string>>(new Set())
+
+function toggleGroup(g: string): void {
+  if (filterGroups.value.has(g)) filterGroups.value.delete(g)
+  else filterGroups.value.add(g)
+}
+
 const filteredApps = computed(() =>
   store.applications.filter((a) => {
     if (search.value.trim()) {
@@ -61,6 +84,7 @@ const filteredApps = computed(() =>
     }
     if (filterChannel.value && a.channel !== filterChannel.value) return false
     if (filterTags.value.size && !a.tags.some((t) => filterTags.value.has(t))) return false
+    if (filterGroups.value.size && !(a.groups ?? []).some((g) => filterGroups.value.has(g))) return false
     return true
   }),
 )
@@ -113,6 +137,7 @@ function clearFilters(): void {
   search.value = ''
   filterChannel.value = null
   filterTags.value = new Set()
+  filterGroups.value = new Set()
 }
 
 function countOf(status: ApplicationStatus): number {
@@ -207,6 +232,47 @@ function onAdvance(app: Application): void {
   safeStatusAction(() => store.advance(app.id))
 }
 
+/* ── AI 特化简历（backlog 阶段，投递前） ── */
+const specializing = ref<string | null>(null)
+const specializeMsg = ref('')
+
+async function specializeResume(app: Application): Promise<void> {
+  if (specializing.value) return
+  const jd = app.jd?.trim()
+  if (!jd) {
+    specializeMsg.value = '该投递没有 JD，请先在详情页补充岗位描述'
+    window.setTimeout(() => (specializeMsg.value = ''), 3200)
+    return
+  }
+  // 去重：同一投递只生成一份特化简历（避免重复节点）
+  if (resumeTree.getByApplication(app.id)) {
+    specializeMsg.value = '该投递已有特化简历，可到「简历」页查看或删除后重新生成'
+    window.setTimeout(() => (specializeMsg.value = ''), 3200)
+    return
+  }
+  specializing.value = app.id
+  specializeMsg.value = ''
+  try {
+    const profileText = JSON.stringify(profileStore.profile, null, 2)
+    const md = await generateResume(jd, profileText)
+    resumeTree.addNode({
+      title: `特化-${app.company || '未知公司'}-${app.title || '岗位'}`,
+      parent_id: resumeTree.baseResume?.id ?? null,
+      kind: 'specialized',
+      application_id: app.id,
+      content_md: md,
+      jd: jd.slice(0, 200),
+    })
+    specializeMsg.value = `已生成特化简历「${app.title || '岗位'}」，可在「简历」页查看`
+    window.setTimeout(() => (specializeMsg.value = ''), 4000)
+  } catch (e) {
+    specializeMsg.value = e instanceof Error ? e.message : 'AI 特化失败'
+    window.setTimeout(() => (specializeMsg.value = ''), 4000)
+  } finally {
+    specializing.value = null
+  }
+}
+
 function onTerminal(app: Application, to: ApplicationStatus): void {
   let reason: string | undefined
   if (to === 'rejected') {
@@ -273,7 +339,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-6xl px-6 pb-8">
       <!-- 头部 -->
@@ -283,8 +348,22 @@ onBeforeUnmount(() => {
 
       <ModuleTabs :tabs="tabs" />
 
+      <!-- AI 特化简历提示 -->
+      <div
+        v-if="specializeMsg"
+        class="card-glass mb-4 flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] text-neutral-500"
+      >
+        <span>{{ specializeMsg }}</span>
+        <button class="shrink-0 text-neutral-400 hover:text-neutral-900" @click="specializeMsg = ''">✕</button>
+      </div>
+
+      <!-- 同步采集数据（插件采集 → 看板） -->
+      <section class="card-glass mb-5 p-3">
+        <BridgeSyncPanel />
+      </section>
+
       <!-- 筛选栏 -->
-      <section class="card-glass mb-5 space-y-2.5 p-3" style="backdrop-filter: blur(28px) saturate(1.6)">
+      <section class="card-glass mb-5 space-y-2.5 p-3">
         <div class="flex flex-wrap items-center gap-2">
           <input
             v-model="search"
@@ -295,15 +374,15 @@ onBeforeUnmount(() => {
             <option :value="null">全部渠道</option>
             <option v-for="c in allChannels" :key="c" :value="c">{{ c }}</option>
           </select>
-          <div class="flex shrink-0 overflow-hidden rounded-lg border border-[rgba(255,255,255,0.12)]">
+          <div class="flex shrink-0 overflow-hidden rounded-lg border border-neutral-300">
             <button
               v-for="m in VIEW_OPTIONS"
               :key="m.k"
               class="px-2.5 py-1.5 text-[11.5px] transition-colors"
               :class="
                 prefs.viewMode === m.k
-                  ? 'bg-[rgba(50,240,140,0.14)] text-[#32f08c]'
-                  : 'text-[rgba(245,249,254,0.55)] hover:bg-[rgba(237,239,242,0.05)] hover:text-[#f5f9fe]'
+                  ? 'bg-neutral-200 text-neutral-900'
+                  : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900'
               "
               @click="prefsStore.set({ viewMode: m.k })"
             >
@@ -311,14 +390,14 @@ onBeforeUnmount(() => {
             </button>
           </div>
           <button
-            class="rounded-lg border border-[rgba(50,240,140,0.35)] bg-[rgba(50,240,140,0.06)] px-3 py-1.5 text-[12px] font-medium text-[#32f08c]"
+            class="rounded-lg border border-neutral-400 bg-neutral-50 px-3 py-1.5 text-[12px] font-medium text-neutral-900"
             @click="showSettings = true"
           >
             ⚙ 呈现设置
           </button>
           <button
-            v-if="search || filterChannel || filterTags.size"
-            class="rounded-lg px-2 py-1.5 text-[12px] text-[rgba(245,249,254,0.4)] hover:text-[#f87171]"
+            v-if="search || filterChannel || filterTags.size || filterGroups.size"
+            class="rounded-lg px-2 py-1.5 text-[12px] text-neutral-400 hover:text-red-600"
             @click="clearFilters"
           >
             清除筛选
@@ -327,15 +406,15 @@ onBeforeUnmount(() => {
 
         <!-- 标签分类 -->
         <div v-if="allTags.length" class="flex flex-wrap items-center gap-1.5">
-          <span class="text-[11px] text-[rgba(245,249,254,0.35)]">标签：</span>
+          <span class="text-[11px] text-neutral-400">标签：</span>
           <button
             v-for="t in allTags"
             :key="t"
             class="rounded-full border px-2 py-0.5 text-[11px] transition-colors"
             :class="
               filterTags.has(t)
-                ? 'border-[rgba(50,240,140,0.5)] bg-[rgba(50,240,140,0.12)] text-[#32f08c]'
-                : 'border-[rgba(255,255,255,0.1)] bg-[rgba(237,239,242,0.04)] text-[rgba(245,249,254,0.55)] hover:text-[#f5f9fe]'
+                ? 'border-neutral-900 bg-neutral-100 text-neutral-900'
+                : 'border-neutral-300 bg-neutral-50 text-neutral-500 hover:text-neutral-900'
             "
             @click="toggleTag(t)"
           >
@@ -343,23 +422,41 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
+        <!-- 分组筛选 -->
+        <div v-if="allGroups.length" class="flex flex-wrap items-center gap-1.5">
+          <span class="text-[11px] text-neutral-400">分组：</span>
+          <button
+            v-for="g in allGroups"
+            :key="g"
+            class="rounded-full border px-2 py-0.5 text-[11px] transition-colors"
+            :class="
+              filterGroups.has(g)
+                ? 'border-neutral-900 bg-neutral-100 text-neutral-900'
+                : 'border-neutral-300 bg-neutral-50 text-neutral-500 hover:text-neutral-900'
+            "
+            @click="toggleGroup(g)"
+          >
+            ◆ {{ g }}
+          </button>
+        </div>
+
         <!-- 排序 -->
         <div class="flex flex-wrap items-center gap-2">
-          <span class="text-[11px] text-[rgba(245,249,254,0.35)]">排序：</span>
+          <span class="text-[11px] text-neutral-400">排序：</span>
           <button
             v-for="opt in SORT_OPTIONS"
             :key="opt.key"
             class="rounded-full px-2.5 py-0.5 text-[11.5px] transition-colors"
             :class="
               prefs.sortMode === opt.key
-                ? 'bg-[rgba(50,240,140,0.15)] text-[#32f08c]'
-                : 'text-[rgba(245,249,254,0.5)] hover:text-[#f5f9fe]'
+                ? 'bg-neutral-200 text-neutral-900'
+                : 'text-neutral-500 hover:text-neutral-900'
             "
             @click="prefsStore.set({ sortMode: opt.key })"
           >
             {{ opt.label }}
           </button>
-          <span class="ml-auto font-mono text-[11px] text-[rgba(245,249,254,0.3)]">
+          <span class="ml-auto font-mono text-[11px] text-neutral-400">
             {{ filteredApps.length }} / {{ store.total }} 条
           </span>
         </div>
@@ -371,13 +468,13 @@ onBeforeUnmount(() => {
           <div
             v-for="status in store.boardStatuses"
             :key="status"
-            class="flex w-[252px] shrink-0 flex-col rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(18,20,24,0.25)]"
+            class="flex w-[252px] shrink-0 flex-col rounded-xl border border-neutral-200 bg-neutral-50"
           >
             <div class="flex items-center gap-2 px-3 py-3">
               <span class="h-2 w-2 rounded-full" :class="statusMeta(status).dot" />
-              <span class="text-[13px] font-semibold text-[#f5f9fe]">{{ statusMeta(status).label }}</span>
-              <span class="font-mono text-[11px] text-[rgba(245,249,254,0.35)]">{{ countOf(status) }}</span>
-              <span v-if="statusMeta(status).terminal" class="ml-auto text-[10px] text-[rgba(245,249,254,0.3)]">终态</span>
+              <span class="text-[13px] font-semibold text-neutral-900">{{ statusMeta(status).label }}</span>
+              <span class="font-mono text-[11px] text-neutral-400">{{ countOf(status) }}</span>
+              <span v-if="statusMeta(status).terminal" class="ml-auto text-[10px] text-neutral-400">终态</span>
             </div>
 
             <div class="flex-1 space-y-2.5 overflow-y-auto px-2.5 pb-2.5">
@@ -389,10 +486,10 @@ onBeforeUnmount(() => {
               >
                 <div class="flex items-start justify-between gap-2">
                   <div class="min-w-0">
-                    <div class="truncate text-[14px] font-semibold text-[#f5f9fe]">
+                    <div class="truncate text-[14px] font-semibold text-neutral-900">
                       {{ app.title || '未命名岗位' }}
                     </div>
-                    <div class="mt-0.5 truncate text-[12px] text-[rgba(245,249,254,0.5)]">
+                    <div class="mt-0.5 truncate text-[12px] text-neutral-500">
                       {{ app.company }}
                     </div>
                   </div>
@@ -405,48 +502,64 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- 卡片字段（按设置显示） -->
-                <div v-if="prefs.showFields.importance && app.importance" class="mt-1.5 text-[11px] text-[#fbbf24]">
-                  {{ '★'.repeat(app.importance) }}<span class="text-[rgba(245,249,254,0.3)]">{{ '☆'.repeat(5 - app.importance) }}</span>
+                <div v-if="prefs.showFields.importance && app.importance" class="mt-1.5 text-[11px] text-neutral-600">
+                  {{ '★'.repeat(app.importance) }}<span class="text-neutral-400">{{ '☆'.repeat(5 - app.importance) }}</span>
                 </div>
                 <div v-if="(prefs.showFields.channel && app.channel) || (prefs.showFields.date && app.applied_at)" class="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
-                  <span v-if="prefs.showFields.channel && app.channel" class="text-[11px] text-[rgba(245,249,254,0.4)]">📌 {{ app.channel }}</span>
-                  <span v-if="prefs.showFields.date && app.applied_at" class="font-mono text-[11px] text-[rgba(245,249,254,0.35)]">{{ app.applied_at }}</span>
+                  <span v-if="prefs.showFields.channel && app.channel" class="text-[11px] text-neutral-400">📌 {{ app.channel }}</span>
+                  <span v-if="prefs.showFields.date && app.applied_at" class="font-mono text-[11px] text-neutral-400">{{ app.applied_at }}</span>
                 </div>
                 <div v-if="prefs.showFields.tags && app.tags.length" class="mt-2 flex flex-wrap gap-1.5">
                   <span
                     v-for="t in app.tags"
                     :key="t"
-                    class="rounded bg-[rgba(50,240,140,0.08)] px-1.5 py-0.5 text-[10.5px] text-[#60f2bd]"
+                    class="rounded bg-neutral-100 px-1.5 py-0.5 text-[10.5px] text-neutral-600"
                   >
                     #{{ t }}
                   </span>
                 </div>
-                <p v-if="prefs.showFields.notes && app.notes" class="mt-2 line-clamp-2 text-[11.5px] leading-relaxed text-[rgba(245,249,254,0.45)]">
+                <p v-if="prefs.showFields.notes && app.notes" class="mt-2 line-clamp-2 text-[11.5px] leading-relaxed text-neutral-500">
                   {{ app.notes }}
                 </p>
 
                 <!-- 操作 -->
-                <div class="mt-3 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-2.5" @click.stop>
+                <div class="mt-3 flex items-center justify-between border-t border-neutral-200 pt-2.5" @click.stop>
                   <button
                     v-if="canAdvance(app)"
-                    class="text-[12px] font-medium text-[#32f08c] transition-colors hover:text-[#60f2bd]"
+                    class="text-[12px] font-medium text-neutral-900 transition-colors hover:underline"
                     @click="onAdvance(app)"
                   >
                     推进 ▸
                   </button>
-                  <span v-else class="text-[12px] text-[rgba(245,249,254,0.25)]">
+                  <span v-else class="text-[12px] text-neutral-300">
                     {{ statusMeta(app.status, app.total_rounds).terminal ? '已结束' : '最后一轮 · 待定' }}
                   </span>
 
                   <div class="relative flex items-center gap-2">
                     <button
-                      class="rounded px-1.5 py-0.5 text-[11px] text-[rgba(245,249,254,0.4)] transition-colors hover:text-[#f5f9fe]"
+                      v-if="resumeTree.getByApplication(app.id)"
+                      class="rounded px-1.5 py-0.5 text-[11px] text-neutral-600 transition-colors hover:underline"
+                      title="已关联简历，点击查看"
+                      @click="router.push('/resume')"
+                    >
+                      简历 ✓
+                    </button>
+                    <button
+                      v-if="app.status === 'backlog'"
+                      class="rounded px-1.5 py-0.5 text-[11px] text-neutral-700 transition-colors hover:underline"
+                      :disabled="specializing !== null"
+                      @click="specializeResume(app)"
+                    >
+                      {{ specializing === app.id ? '特化中…' : '✨ AI 特化' }}
+                    </button>
+                    <button
+                      class="rounded px-1.5 py-0.5 text-[11px] text-neutral-400 transition-colors hover:text-neutral-900"
                       @click="editing = app"
                     >
                       编辑
                     </button>
                     <button
-                      class="rounded px-1.5 py-0.5 text-[11px] text-[rgba(245,249,254,0.4)] transition-colors hover:text-[#f87171]"
+                      class="rounded px-1.5 py-0.5 text-[11px] text-neutral-400 transition-colors hover:text-red-600"
                       @click="onRemove(app)"
                     >
                       删除
@@ -456,7 +569,7 @@ onBeforeUnmount(() => {
                       data-menu-trigger
                       aria-haspopup="menu"
                       :aria-expanded="openMenuId === app.id"
-                      class="rounded border border-[rgba(255,255,255,0.1)] px-2 py-0.5 text-[11px] text-[rgba(245,249,254,0.5)] transition-colors hover:border-[rgba(50,240,140,0.4)] hover:text-[#32f08c]"
+                      class="rounded border border-neutral-300 px-2 py-0.5 text-[11px] text-neutral-500 transition-colors hover:border-neutral-900 hover:text-neutral-900"
                       @click="toggleMenu(app, $event)"
                     >
                       标记 ▾
@@ -465,7 +578,7 @@ onBeforeUnmount(() => {
                 </div>
               </div>
 
-              <div v-if="!(board[status] ?? []).length" class="rounded-lg border border-dashed border-[rgba(255,255,255,0.08)] px-3 py-6 text-center text-[11.5px] text-[rgba(245,249,254,0.25)]">
+              <div v-if="!(board[status] ?? []).length" class="rounded-lg border border-dashed border-neutral-200 px-3 py-6 text-center text-[11.5px] text-neutral-300">
                 暂无投递
               </div>
             </div>
@@ -477,7 +590,7 @@ onBeforeUnmount(() => {
       <section v-else-if="prefs.viewMode === 'list'" class="card-glass overflow-x-auto p-2">
         <table class="w-full text-left">
           <thead>
-            <tr class="border-b border-[rgba(255,255,255,0.08)] text-[11px] text-[rgba(245,249,254,0.4)]">
+            <tr class="border-b border-neutral-200 text-[11px] text-neutral-400">
               <th class="py-2.5 pl-3 pr-3 font-medium">状态</th>
               <th class="py-2.5 pr-3 font-medium">公司 / 岗位</th>
               <th class="py-2.5 pr-3 font-medium">渠道</th>
@@ -491,7 +604,7 @@ onBeforeUnmount(() => {
             <tr
               v-for="app in sortedApps"
               :key="app.id"
-              class="cursor-pointer border-b border-[rgba(255,255,255,0.04)] transition-colors last:border-0 hover:bg-[rgba(237,239,242,0.04)]"
+              class="cursor-pointer border-b border-neutral-200 transition-colors last:border-0 hover:bg-neutral-50"
               @click="openDetail(app.id)"
             >
               <td class="py-2.5 pl-3 pr-3">
@@ -503,45 +616,45 @@ onBeforeUnmount(() => {
                 </span>
               </td>
               <td class="py-2.5 pr-3">
-                <div class="text-[12.5px] font-medium text-[#f5f9fe]">{{ app.title }}</div>
-                <div class="text-[11px] text-[rgba(245,249,254,0.4)]">{{ app.company }}</div>
+                <div class="text-[12.5px] font-medium text-neutral-900">{{ app.title }}</div>
+                <div class="text-[11px] text-neutral-400">{{ app.company }}</div>
               </td>
-              <td class="py-2.5 pr-3 text-[12px] text-[rgba(245,249,254,0.55)]">{{ app.channel || '—' }}</td>
-              <td class="py-2.5 pr-3 font-mono text-[11.5px] text-[rgba(245,249,254,0.5)]">{{ app.applied_at || '—' }}</td>
-              <td class="py-2.5 pr-3 text-[11.5px] text-[#fbbf24]">
+              <td class="py-2.5 pr-3 text-[12px] text-neutral-500">{{ app.channel || '—' }}</td>
+              <td class="py-2.5 pr-3 font-mono text-[11.5px] text-neutral-500">{{ app.applied_at || '—' }}</td>
+              <td class="py-2.5 pr-3 text-[11.5px] text-neutral-600">
                 {{ app.importance ? '★'.repeat(app.importance) : '—' }}
               </td>
               <td class="py-2.5 pr-3">
                 <div class="flex flex-wrap gap-1">
-                  <span v-for="t in app.tags" :key="t" class="rounded bg-[rgba(50,240,140,0.08)] px-1 py-0.5 text-[10px] text-[#60f2bd]">#{{ t }}</span>
+                  <span v-for="t in app.tags" :key="t" class="rounded bg-neutral-100 px-1 py-0.5 text-[10px] text-neutral-600">#{{ t }}</span>
                 </div>
               </td>
-              <td class="py-2.5 pr-3 font-mono text-[11px] text-[rgba(245,249,254,0.35)]">
+              <td class="py-2.5 pr-3 font-mono text-[11px] text-neutral-400">
                 {{ app.updated_at.slice(0, 10) }}
               </td>
             </tr>
           </tbody>
         </table>
-        <div v-if="!sortedApps.length" class="py-10 text-center text-[12px] text-[rgba(245,249,254,0.3)]">
+        <div v-if="!sortedApps.length" class="py-10 text-center text-[12px] text-neutral-400">
           没有匹配的投递
         </div>
       </section>
 
       <!-- ═══════ 全流程视图（以公司/岗位为单位） ═══════ -->
       <section v-else class="space-y-3">
-        <div class="text-[11.5px] text-[rgba(245,249,254,0.4)]">
+        <div class="text-[11.5px] text-neutral-400">
           每个投递一行，展示从备选到当前阶段的完整流程（点击进入详情档案）
         </div>
         <div
           v-for="app in sortedApps"
           :key="app.id"
-          class="card-glass cursor-pointer p-4 transition-colors hover:border-[rgba(50,240,140,0.3)]"
+          class="card-glass cursor-pointer p-4 transition-colors hover:border-neutral-300"
           @click="openDetail(app.id)"
         >
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="min-w-0">
-              <div class="truncate text-[14px] font-semibold text-[#f5f9fe]">{{ app.title }}</div>
-              <div class="mt-0.5 truncate text-[12px] text-[rgba(245,249,254,0.5)]">
+              <div class="truncate text-[14px] font-semibold text-neutral-900">{{ app.title }}</div>
+              <div class="mt-0.5 truncate text-[12px] text-neutral-500">
                 {{ app.company }}<span v-if="app.channel"> · {{ app.channel }}</span>
               </div>
             </div>
@@ -561,15 +674,15 @@ onBeforeUnmount(() => {
                   class="h-3 w-3 rounded-full border-2"
                   :class="
                     node.current
-                      ? 'border-[#32f08c] bg-[#32f08c] shadow-[0_0_6px_rgba(50,240,140,0.8)]'
+                      ? 'border-neutral-900 bg-neutral-900'
                       : node.reached
                         ? node.dot
-                        : 'border-[rgba(255,255,255,0.2)] bg-transparent'
+                        : 'border-neutral-400 bg-transparent'
                   "
                 />
                 <span
                   class="whitespace-nowrap px-0.5 text-[10px]"
-                  :class="node.current ? 'font-medium text-[#32f08c]' : node.reached ? node.text : 'text-[rgba(245,249,254,0.25)]'"
+                  :class="node.current ? 'font-medium text-neutral-900' : node.reached ? node.text : 'text-neutral-300'"
                 >
                   {{ node.label }}
                 </span>
@@ -577,18 +690,18 @@ onBeforeUnmount(() => {
               <div
                 v-if="i < pipelineStages(app).length - 1"
                 class="h-0.5 min-w-3 flex-1 rounded"
-                :class="pipelineStages(app)[i]?.reached ? 'bg-[rgba(50,240,140,0.35)]' : 'bg-[rgba(255,255,255,0.08)]'"
+                :class="pipelineStages(app)[i]?.reached ? 'bg-neutral-500' : 'bg-neutral-200'"
               />
             </template>
           </div>
 
           <!-- 事件简史 -->
-          <div v-if="eventsOf(app.id).length" class="mt-2 truncate text-[10.5px] text-[rgba(245,249,254,0.35)]">
+          <div v-if="eventsOf(app.id).length" class="mt-2 truncate text-[10.5px] text-neutral-400">
             {{ eventsOf(app.id).slice(-3).map((e) => `${statusMeta(e.from ?? e.to).label} → ${statusMeta(e.to).label}`).join(' · ') }}
           </div>
         </div>
 
-        <div v-if="!sortedApps.length" class="card-glass py-10 text-center text-[12px] text-[rgba(245,249,254,0.3)]">
+        <div v-if="!sortedApps.length" class="card-glass py-10 text-center text-[12px] text-neutral-400">
           没有匹配的投递
         </div>
       </section>
@@ -603,19 +716,19 @@ onBeforeUnmount(() => {
         v-if="menuApp"
         data-menu-root
         role="menu"
-        class="fixed z-50 w-[150px] overflow-hidden rounded-lg border border-[rgba(255,255,255,0.1)] bg-[#14171b] shadow-[0_12px_32px_rgba(0,0,0,0.5)]"
+        class="fixed z-50 w-[150px] overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-lg"
         :style="{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }"
       >
         <button
           v-for="target in menuTargets"
           :key="target"
           role="menuitem"
-          class="block w-full px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-[rgba(237,239,242,0.06)]"
+          class="block w-full px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-neutral-100"
           :class="statusMeta(target, menuApp!.total_rounds).text"
           @click="onTerminal(menuApp, target)"
         >
           {{ statusMeta(target, menuApp!.total_rounds).label }}
-          <span class="ml-1 text-[10.5px] text-[rgba(245,249,254,0.3)]">{{ statusMeta(target, menuApp!.total_rounds).desc }}</span>
+          <span class="ml-1 text-[10.5px] text-neutral-400">{{ statusMeta(target, menuApp!.total_rounds).desc }}</span>
         </button>
       </div>
     </Teleport>
@@ -624,13 +737,13 @@ onBeforeUnmount(() => {
     <Modal v-if="showSettings" title="看板呈现设置" max-width="max-w-md" @close="showSettings = false">
       <div class="space-y-5">
         <div>
-          <div class="mb-2 text-[12px] font-medium text-[rgba(245,249,254,0.6)]">视图</div>
+          <div class="mb-2 text-[12px] font-medium text-neutral-600">视图</div>
           <div class="flex gap-2">
             <button
               v-for="mode in ([{k:'board',l:'看板视图'},{k:'list',l:'列表视图'},{k:'pipeline',l:'全流程'}] as const)"
               :key="mode.k"
               class="flex-1 rounded-lg border py-2 text-[12.5px] transition-colors"
-              :class="prefs.viewMode === mode.k ? 'border-[rgba(50,240,140,0.5)] bg-[rgba(50,240,140,0.1)] text-[#32f08c]' : 'border-[rgba(255,255,255,0.1)] text-[rgba(245,249,254,0.55)]'"
+              :class="prefs.viewMode === mode.k ? 'border-neutral-900 bg-neutral-100 text-neutral-900' : 'border-neutral-300 text-neutral-500'"
               @click="prefsStore.set({ viewMode: mode.k })"
             >
               {{ mode.l }}
@@ -639,13 +752,13 @@ onBeforeUnmount(() => {
         </div>
 
         <div>
-          <div class="mb-2 text-[12px] font-medium text-[rgba(245,249,254,0.6)]">默认排序</div>
+          <div class="mb-2 text-[12px] font-medium text-neutral-600">默认排序</div>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="opt in SORT_OPTIONS"
               :key="opt.key"
               class="rounded-full border px-3 py-1 text-[12px] transition-colors"
-              :class="prefs.sortMode === opt.key ? 'border-[rgba(50,240,140,0.5)] bg-[rgba(50,240,140,0.1)] text-[#32f08c]' : 'border-[rgba(255,255,255,0.1)] text-[rgba(245,249,254,0.55)]'"
+              :class="prefs.sortMode === opt.key ? 'border-neutral-900 bg-neutral-100 text-neutral-900' : 'border-neutral-300 text-neutral-500'"
               @click="prefsStore.set({ sortMode: opt.key })"
             >
               {{ opt.label }}
@@ -654,13 +767,13 @@ onBeforeUnmount(() => {
         </div>
 
         <div>
-          <div class="mb-2 text-[12px] font-medium text-[rgba(245,249,254,0.6)]">卡片显示字段</div>
+          <div class="mb-2 text-[12px] font-medium text-neutral-600">卡片显示字段</div>
           <div class="space-y-1.5">
-            <label v-for="(label, key) in FIELD_LABELS" :key="key" class="flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 hover:bg-[rgba(237,239,242,0.04)]">
-              <span class="text-[12.5px] text-[rgba(245,249,254,0.7)]">{{ label }}</span>
+            <label v-for="(label, key) in FIELD_LABELS" :key="key" class="flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 hover:bg-neutral-50">
+              <span class="text-[12.5px] text-neutral-700">{{ label }}</span>
               <input
                 type="checkbox"
-                class="h-4 w-4 accent-[#32f08c]"
+                class="h-4 w-4 accent-neutral-900"
                 :checked="prefs.showFields[key]"
                 @change="prefsStore.setField(key, ($event.target as HTMLInputElement).checked)"
               />
@@ -668,11 +781,11 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-3">
-          <button class="text-[12px] text-[rgba(245,249,254,0.4)] hover:text-[#f5f9fe]" @click="prefsStore.reset()">
+        <div class="flex items-center justify-between border-t border-neutral-200 pt-3">
+          <button class="text-[12px] text-neutral-400 hover:text-neutral-900" @click="prefsStore.reset()">
             恢复默认
           </button>
-          <button class="rounded-lg border border-[rgba(50,240,140,0.4)] px-4 py-1.5 text-[12.5px] text-[#32f08c]" @click="showSettings = false">
+          <button class="rounded-lg border border-neutral-900 px-4 py-1.5 text-[12.5px] text-neutral-900" @click="showSettings = false">
             完成
           </button>
         </div>

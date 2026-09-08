@@ -7,7 +7,8 @@ import { buildCareerCard } from '@pa/shared/career'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { buildDemoProfile, buildEmptyProfile, uid } from '@/data/seed'
+import { buildEmptyProfile, uid } from '@/data/seed'
+import { postToBridge } from '@/lib/bridge'
 
 const STORAGE_KEY = 'pa-profile-v1'
 
@@ -25,6 +26,16 @@ function loadProfile(): Profile | null {
 
 function saveProfile(profile: Profile): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
+  // 同步填表所需摘要到桥（插件填充表单用；桥离线静默失败）
+  postToBridge('/api/bridge/sync', {
+    profileSummary: {
+      full_name: profile.full_name ?? '',
+      email: profile.email ?? '',
+      phone: profile.phone ?? '',
+      headline: profile.headline ?? '',
+      summary: profile.summary ?? '',
+    },
+  })
 }
 
 /** 生成 id（localStorage 版用；与 server crypto.randomUUID 格式无关） */
@@ -33,7 +44,7 @@ function makeId(): string {
 }
 
 export const useProfileStore = defineStore('profile', () => {
-  // 首次启动不预置示例档案：空档案开始（演示数据仅"重置为演示"时生成）
+  // 首次启动不预置示例档案：空档案开始，用户从零录入
   const profile = ref<Profile>(loadProfile() ?? buildEmptyProfile())
 
   const careerCard = computed<CareerCardData>(() => buildCareerCard(profile.value))
@@ -104,27 +115,63 @@ export const useProfileStore = defineStore('profile', () => {
     saveProfile(profile.value)
   }
 
-  /** 整体重置为 demo 数据 */
-  function resetToDemo(): void {
-    profile.value = buildDemoProfile()
+  /** 清空为空白档案（保留档案 id，用户从零开始） */
+  function resetEmpty(): void {
+    profile.value = buildEmptyProfile()
     saveProfile(profile.value)
   }
 
-  /** 清空为空白档案（仍保留默认姓名占位） */
-  function resetEmpty(): void {
-    const demo = buildDemoProfile()
+  /** 简历导入结果写入档案（merge 追加 / overwrite 清空重填） */
+  function importResume(
+    parsed: {
+      full_name?: string
+      email?: string
+      phone?: string
+      headline?: string
+      summary?: string
+      skills?: Array<{ name: string; category?: string; level?: number }>
+      experiences?: Array<{ role: string; company?: string; description_md?: string; start_date?: string; end_date?: string }>
+      education?: Array<{ school: string; degree?: string; major?: string; start_date?: string; end_date?: string }>
+      projects?: Array<{ name: string; summary?: string; description_md?: string }>
+    },
+    mode: 'merge' | 'overwrite',
+  ): void {
+    const p = profile.value
+    const ts = new Date().toISOString()
+    const srcSkills = parsed.skills ?? []
+    const srcExp = parsed.experiences ?? []
+    const srcEdu = parsed.education ?? []
+    const srcProj = parsed.projects ?? []
+
+    const skills = [
+      ...(mode === 'overwrite' ? [] : p.skills),
+      ...srcSkills.map((s) => ({ id: makeId(), name: s.name, category: s.category, level: s.level, tags: [] as string[] })),
+    ]
+    const experiences = [
+      ...(mode === 'overwrite' ? [] : p.experiences),
+      ...srcExp.map((e) => ({ id: makeId(), role: e.role, company: e.company, description_md: e.description_md ?? '', tags: [] as string[], start_date: e.start_date, end_date: e.end_date })),
+    ]
+    const education = [
+      ...(mode === 'overwrite' ? [] : p.education),
+      ...srcEdu.map((e) => ({ id: makeId(), school: e.school, degree: e.degree, major: e.major, start_date: e.start_date, end_date: e.end_date, description: undefined as string | undefined })),
+    ]
+    const projects = [
+      ...(mode === 'overwrite' ? [] : p.projects),
+      ...srcProj.map((pr) => ({ id: makeId(), name: pr.name, summary: pr.summary, description_md: pr.description_md ?? '', tags: [] as string[], attachments: [] as string[] })),
+    ]
+
     profile.value = {
-      ...demo,
-      full_name: '',
-      headline: undefined,
-      email: undefined,
-      phone: undefined,
-      summary: undefined,
-      skills: [],
-      experiences: [],
-      education: [],
-      projects: [],
-      journal: [],
+      ...p,
+      full_name: parsed.full_name || p.full_name,
+      headline: parsed.headline ?? p.headline,
+      email: parsed.email ?? p.email,
+      phone: parsed.phone ?? p.phone,
+      summary: parsed.summary ?? p.summary,
+      skills,
+      experiences,
+      education,
+      projects,
+      updated_at: ts,
     }
     saveProfile(profile.value)
   }
@@ -138,7 +185,7 @@ export const useProfileStore = defineStore('profile', () => {
     addJournalEntry,
     updateJournalEntry,
     removeJournalEntry,
-    resetToDemo,
     resetEmpty,
+    importResume,
   }
 })

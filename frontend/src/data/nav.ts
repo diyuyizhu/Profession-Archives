@@ -26,10 +26,10 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { key: 'archive', code: 'A', title: '生涯档案', path: '/archive', icon: iconOf('archive') },
   { key: 'tracking', code: 'B', title: '投递看板', path: '/tracking', icon: iconOf('tracking') },
-  { key: 'interview', code: 'C', title: '面试复盘', path: '/interview', icon: iconOf('interview') },
+  { key: 'resume', code: 'E', title: '简历', path: '/resume', icon: iconOf('ai') },
   { key: 'automation', code: 'D', title: '自动投递', path: '/automation', icon: iconOf('automation') },
-  { key: 'ai', code: 'E', title: 'AI 助手', path: '/ai', icon: iconOf('ai') },
   { key: 'growth', code: 'F', title: '成长追踪', path: '/growth', icon: iconOf('growth') },
   { key: 'card', code: 'A5', title: '个人名片', path: '/card', icon: iconOf('card') },
+  { key: 'knowledge', code: 'K', title: '知识库', path: '/knowledge', icon: iconOf('knowledge') },
   { key: 'settings', code: '—', title: '设置', path: '/settings', icon: iconOf('settings') },
 ]

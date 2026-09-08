@@ -41,6 +41,12 @@ const routes = [
     meta: { title: '岗位采集', code: 'B2', milestone: 'M1' },
   },
   {
+    path: '/tracking/import',
+    name: 'tracking-import',
+    component: () => import('../views/ImportView.vue'),
+    meta: { title: '批量导入', code: 'B2', milestone: 'M2' },
+  },
+  {
     path: '/tracking/stats',
     name: 'tracking-stats',
     component: () => import('../views/StatsView.vue'),
@@ -105,6 +111,20 @@ const routes = [
     meta: { title: '字段映射', code: 'D4', milestone: 'M4' },
   },
 
+  /* ── 简历（E：简历树 · 导入 · 生成 · 润色 · 匹配） ── */
+  {
+    path: '/resume',
+    name: 'resume',
+    component: () => import('../views/ResumeTreeView.vue'),
+    meta: { title: '简历', code: 'E', milestone: 'M2' },
+  },
+  {
+    path: '/resume/import',
+    name: 'resume-import',
+    component: () => import('../views/AIResumeImportView.vue'),
+    meta: { title: '简历导入', code: 'E', milestone: 'M2' },
+  },
+
   /* ── AI 助手（E） ── */
   {
     path: '/ai',
@@ -163,6 +183,14 @@ const routes = [
     name: 'card',
     component: () => import('../views/CardView.vue'),
     meta: { title: '个人名片', code: 'A5', milestone: 'M5' },
+  },
+
+  /* ── 知识库（K） ── */
+  {
+    path: '/knowledge',
+    name: 'knowledge',
+    component: () => import('../views/KnowledgeView.vue'),
+    meta: { title: '知识库', code: 'K', milestone: 'M1' },
   },
 
   /* ── 设置 ── */
