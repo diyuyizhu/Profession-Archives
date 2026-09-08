@@ -58,16 +58,10 @@ export function stageIndex(status: ApplicationStatus): number {
   return APPLICATION_PREFIX_STAGES.indexOf(status as ApplicationPrefixStage)
 }
 
-/** 轮次阶段的配色轮（最多 8 面不同色，超出取模） */
+/** 轮次阶段的灰阶交替配色（经典黑白：奇偶轮深浅区分，最多 8 轮） */
 const ROUND_COLORS: Array<Pick<ApplicationStatusMeta, 'text' | 'chip' | 'dot'>> = [
-  { text: 'text-[#a78bfa]', chip: 'border-[rgba(139,92,246,0.35)] bg-[rgba(139,92,246,0.08)]', dot: 'bg-[#a78bfa]' },
-  { text: 'text-[#fbbf24]', chip: 'border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.08)]', dot: 'bg-[#fbbf24]' },
-  { text: 'text-[#f97316]', chip: 'border-[rgba(249,115,22,0.35)] bg-[rgba(249,115,22,0.08)]', dot: 'bg-[#f97316]' },
-  { text: 'text-[#38bdf8]', chip: 'border-[rgba(56,189,248,0.35)] bg-[rgba(56,189,248,0.08)]', dot: 'bg-[#38bdf8]' },
-  { text: 'text-[#f472b6]', chip: 'border-[rgba(244,114,182,0.35)] bg-[rgba(244,114,182,0.08)]', dot: 'bg-[#f472b6]' },
-  { text: 'text-[#2dd4bf]', chip: 'border-[rgba(45,212,191,0.35)] bg-[rgba(45,212,191,0.08)]', dot: 'bg-[#2dd4bf]' },
-  { text: 'text-[#fb7185]', chip: 'border-[rgba(251,113,133,0.35)] bg-[rgba(251,113,133,0.08)]', dot: 'bg-[#fb7185]' },
-  { text: 'text-[#4ade80]', chip: 'border-[rgba(74,222,128,0.35)] bg-[rgba(74,222,128,0.08)]', dot: 'bg-[#4ade80]' },
+  { text: 'text-neutral-900', chip: 'border-neutral-400 bg-neutral-100', dot: 'bg-neutral-800' },
+  { text: 'text-neutral-600', chip: 'border-neutral-300 bg-neutral-50', dot: 'bg-neutral-400' },
 ]
 
 /**

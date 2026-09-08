@@ -16,6 +16,11 @@ use std::sync::Mutex;
 
 use tauri::{Manager, State};
 
+mod bridge;
+use bridge::BridgeHandle;
+
+mod ai;
+
 /// 一次进行中的录制：ffmpeg 子进程 + 其 stdin（用于发送 'q' 优雅结束）
 struct ActiveRecording {
     child: Child,
@@ -154,6 +159,8 @@ fn stop_system_recording(state: State<'_, RecordingState>) -> Result<(), String>
     Ok(())
 }
 
+struct BridgeState(Mutex<Option<BridgeHandle>>);
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -161,6 +168,32 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .setup(|_app| {
             _app.manage(RecordingState(Mutex::new(None)));
+
+            // 启动本地桥 HTTP 服务（插件通信通道）
+            let bridge_handle = {
+                let app_data = _app
+                    .path()
+                    .app_data_dir()
+                    .unwrap_or_else(|_| std::path::PathBuf::from("."));
+                let _ = std::fs::create_dir_all(&app_data);
+                match BridgeHandle::start(app_data) {
+                    Ok(h) => Some(h),
+                    Err(e) => {
+                        eprintln!("[bridge] 启动失败（端口 8000 可能被占用）: {e}");
+                        None
+                    }
+                }
+            };
+            _app.manage(BridgeState(Mutex::new(bridge_handle)));
+
+            // 窗口关闭时停止桥服务
+            let window = _app.get_webview_window("main").unwrap();
+            window.on_window_event(move |event| {
+                if let tauri::WindowEvent::Destroyed = event {
+                    // bridge handle 会在 app 退出时随进程结束，不必手动释放
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![start_system_recording, stop_system_recording])

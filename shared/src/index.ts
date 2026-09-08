@@ -6,8 +6,8 @@
  * 业务类型在 M1 档案领域实现时补齐，后续模块（B–F）按相同模式扩充。
  */
 
-/** 界面主题名（预留多主题扩展，当前仅 Trae 默认风） */
-export type ThemeName = 'trae'
+/** 界面主题名（经典黑白，当前仅 Classic Mono 默认风） */
+export type ThemeName = 'classic'
 
 /** 功能模块元信息（对应 README 模块 A–F + A5 + 设置） */
 export interface ModuleMeta {
@@ -91,6 +91,15 @@ export const MODULES: ModuleMeta[] = [
     path: '/card',
     priority: 'P1',
     icon: 'M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8ZM6.17 15.99a3 3 0 1 1 5.66 0M15 12h.01M16 10h2M16 14h2',
+  },
+  {
+    key: 'knowledge',
+    code: 'K',
+    title: '知识库',
+    desc: 'Markdown 文档 · 标签分组 · 全文搜索',
+    path: '/knowledge',
+    priority: 'P1',
+    icon: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15Z',
   },
   {
     key: 'settings',
@@ -278,7 +287,11 @@ export interface ApplicationStatusMeta {
   dot: string
 }
 
-/** 固定阶段元信息（前置 + 终态） */
+/**
+ * 固定阶段元信息（前置 + 终态）—— 经典黑白灰阶：
+ * - 流程推进用边框/圆点深浅表达（300 → 400 → 900）
+ * - Offer = 反色实心（黑底白字），拒绝 = 淡化，放弃 = 虚线
+ */
 export const APPLICATION_STATUS_META: Record<
   ApplicationPrefixStage | ApplicationTerminal,
   ApplicationStatusMeta
@@ -287,49 +300,49 @@ export const APPLICATION_STATUS_META: Record<
     label: '备选',
     desc: '待投递 · 备选池',
     terminal: false,
-    text: 'text-[rgba(245,249,254,0.65)]',
-    chip: 'border-[rgba(255,255,255,0.14)] bg-[rgba(237,239,242,0.06)]',
-    dot: 'bg-[rgba(245,249,254,0.5)]',
+    text: 'text-neutral-500',
+    chip: 'border-neutral-300 bg-neutral-50',
+    dot: 'bg-neutral-300',
   },
   applied: {
     label: '已投',
     desc: '简历已投出',
     terminal: false,
-    text: 'text-[#38bdf8]',
-    chip: 'border-[rgba(56,189,248,0.35)] bg-[rgba(56,189,248,0.08)]',
-    dot: 'bg-[#38bdf8]',
+    text: 'text-neutral-900',
+    chip: 'border-neutral-400 bg-neutral-100',
+    dot: 'bg-neutral-700',
   },
   viewed: {
     label: '简历被读',
     desc: 'HR / 系统已读',
     terminal: false,
-    text: 'text-[#60f2bd]',
-    chip: 'border-[rgba(96,242,189,0.35)] bg-[rgba(96,242,189,0.08)]',
-    dot: 'bg-[#60f2bd]',
+    text: 'text-neutral-900',
+    chip: 'border-neutral-900 bg-neutral-100',
+    dot: 'bg-neutral-900',
   },
   offer: {
     label: 'Offer',
     desc: '已发 Offer',
     terminal: true,
-    text: 'text-[#32f08c]',
-    chip: 'border-[rgba(50,240,140,0.45)] bg-[rgba(50,240,140,0.1)]',
-    dot: 'bg-[#32f08c]',
+    text: 'text-white',
+    chip: 'border-neutral-900 bg-neutral-900',
+    dot: 'bg-neutral-900',
   },
   rejected: {
     label: '拒绝',
     desc: '未通过 / 被拒',
     terminal: true,
-    text: 'text-[#f87171]',
-    chip: 'border-[rgba(248,113,113,0.35)] bg-[rgba(248,113,113,0.08)]',
-    dot: 'bg-[#f87171]',
+    text: 'text-neutral-400',
+    chip: 'border-neutral-200 bg-neutral-50',
+    dot: 'bg-neutral-200',
   },
   withdrawn: {
     label: '放弃',
     desc: '主动放弃',
     terminal: true,
-    text: 'text-[rgba(245,249,254,0.45)]',
-    chip: 'border-[rgba(255,255,255,0.12)] bg-[rgba(237,239,242,0.04)]',
-    dot: 'bg-[rgba(245,249,254,0.3)]',
+    text: 'text-neutral-400',
+    chip: 'border-neutral-300 bg-white border-dashed',
+    dot: 'bg-neutral-300',
   },
 }
 
@@ -365,6 +378,8 @@ export interface Application {
   channel?: string
   status: ApplicationStatus
   tags: string[]
+  /** 分组维度（用户自定义，便于筛选：如 前端/北京/BOSS 直聘；导入时自动建议） */
+  groups: string[]
   notes: string
   /** 预期面试总轮数（1–8，决定哪一轮是"终面"；默认 3） */
   total_rounds?: number

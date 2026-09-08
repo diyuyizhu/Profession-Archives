@@ -1,57 +1,58 @@
 # Profession-Archives 浏览器插件（MV3）
 
-连接本地档案与官网投递表单的浏览器插件骨架。
+连接桌面端本地档案与招聘网站投递表单的浏览器插件。
 
-## 当前状态
+## 怎么装
 
-**骨架**：目录结构、manifest（wxt）、background / content / popup 已就位，标注了 `TODO` 的核心逻辑待正式开发。
+> ⚠️ **不能直接拖 zip 安装**。必须用「已解压目录」加载。
 
-## 规划功能（对应 README 模块 D）
+1. 把 `Profession-Archives-extension-0.1.0-chrome.zip` **解压**到任意目录
+2. Chrome / Edge 地址栏输入 `chrome://extensions`（Edge: `edge://extensions`）
+3. 右上角打开「**开发者模式**」
+4. 点「**加载已解压的扩展程序**」→ 选择解压出来的文件夹
+5. 加载成功后工具栏出现「Profession-Archives 助手」图标
 
-| 功能 | 说明 |
-|---|---|
-| **岗位采集** | 岗位详情页点插件，提取 公司/岗位/JD/URL/页面快照 → 回传本地桥 → 看板建记录 |
-| **表单自动填充** | 官网投递页点插件，读取本地档案 → 按字段映射填充姓名/邮箱/电话/简历附件 → **人工确认后提交** |
-| **字段映射记忆** | per-origin 映射规则（识别不准时手动指定并记住） |
-| **投递回传** | 提交成功后自动回传看板"已投" |
-| **合规硬约束** | 不破验证码、不绕过登录、不做反爬对抗；一切提交需用户主动确认 |
+## 配对
 
-## 本地桥（依赖桌面端服务端）
+1. 先启动桌面端 exe（本地桥随应用自动启动，端口 8000）
+2. 桌面应用 → 左侧「插件配对」→ 确认本地桥在线（绿灯）→ 复制配对码
+3. 浏览器点插件图标 → 粘贴配对码 → 保存配对
+4. 状态变绿 = 配对完成
+
+## 能干什么
+
+| 操作 | 说明 |
+|------|------|
+| **采集当前岗位** | 在招聘网站岗位详情页点一下 → 自动提取公司/岗位/JD → 回传桌面端看板备选池 |
+| **填充投递表单** | 在官网投递表单页点一下 → 自动填姓名/邮箱/电话 → 人工核对后点页面提交 |
+| **投递回传** | 提交成功后自动通知桌面端看板"已投"，无需手动更新 |
+| **清除填充高亮** | 去掉绿色高亮框 |
+
+## 合规说明
+
+- 不自动提交、不绕过验证码、不破解登录
+- 填充后必须人工核对并在页面点击提交按钮
+- 所有请求仅走本机 `127.0.0.1:8000`
+
+## 本地桥
 
 插件通过 `http://127.0.0.1:8000/api/automation/*` 与桌面端通信：
-- 配对：桌面端生成配对码，插件 popup 粘贴，请求带 `Authorization: Bearer <token>`
-- CORS 白名单仅放行扩展 origin；服务端只绑 127.0.0.1
+
+- 桌面端启动时在进程内启动嵌入式 HTTP 桥（纯 Rust，无需额外安装 Node.js）
+- 通信需要配对 token（Bearer），配对码在桌面端「插件配对」页获取
+- 采集的岗位/投递暂存桥 inbox，桌面端点「同步采集数据」合并到看板
+
+## 已知限制
+
+- 部分动态表单（React/Vue 渲染、非标准控件）字段识别可能不准，后续逐站适配
+- 仅 Chrome / Edge（Chromium 内核）可用，不支持 Firefox
 
 ## 开发
 
 ```bash
+cd extension
 npm install
 npm run dev      # wxt dev（热更新）
 npm run build    # 构建到 .output/chrome-mv3
+npm run zip      # 打包扩展 zip
 ```
-
-## 加载到浏览器（正确方式）
-
-> ⚠️ **Chrome 不能直接拖 zip 安装**。请用"已解压目录"加载——构建产物 `.output/chrome-mv3/` 本身就是现成目录：
-
-1. `npm run build` 生成 `.output/chrome-mv3/`
-2. Chrome / Edge 打开 `chrome://extensions`（Edge 用 `edge://extensions`）
-3. 开启右上角"**开发者模式**"
-4. 点"**加载已解压的扩展程序**" → 选择 `F:\project\Profession-Archives\extension\.output\chrome-mv3`
-5. 加载成功即出现"Profession-Archives 助手"卡片（有报错会红字显示在此）
-
-## 分发 / 导入（zip 仅用于分发）
-
-- `npm run zip` → `.output/pa-extension-*.zip`（用于分发 / 商店上传）
-- 拿到 zip 的用户：**先解压**到任意目录，再按上面的开发者模式加载解压目录；或签名成 `.crx` 双击安装
-
-## 联调
-
-1. 先启动桌面端本地服务（`PA_PAIRING_TOKEN=xxx npx tsx server/src/index.ts`），在 popup 粘贴配对码
-2. 打开 `tests/demo-submit-form.html`（模拟官网投递表单）→ 点 popup「填充投递表单」→ 人工核对后提交
-
-## 验证状态
-
-- ✅ wxt 构建通过（`.output/chrome-mv3/`）
-- ✅ content 表单扫描/填充/高亮、岗位采集、投递回传、desktopCapture 系统音频 已实现
-- ⚠️ 真实官网动态表单（React/Vue）识别为 TODO，需逐站适配

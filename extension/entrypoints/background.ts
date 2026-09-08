@@ -62,6 +62,36 @@ export default defineBackground(() => {
           .then(sendResponse)
           .catch((e) => sendResponse({ error: String(e) }))
         return true
+      // 站点字段映射：读取（per-origin 记忆）
+      case 'GET_FORM_MAPPING':
+        bridge(`/api/automation/form-mapping?origin=${encodeURIComponent(message.payload?.origin ?? '')}`)
+          .then(sendResponse)
+          .catch((e) => sendResponse({ error: String(e) }))
+        return true
+      // 站点字段映射：上报（记忆）
+      case 'REPORT_FORM_MAPPING':
+        bridge('/api/automation/form-mapping', { method: 'POST', body: JSON.stringify(message.payload) })
+          .then(sendResponse)
+          .catch((e) => sendResponse({ error: String(e) }))
+        return true
+      // AI 模式：表单字段语义识别
+      case 'ANALYZE_FIELDS':
+        bridge('/api/automation/ai/analyze-fields', { method: 'POST', body: JSON.stringify(message.payload) })
+          .then(sendResponse)
+          .catch((e) => sendResponse({ error: String(e) }))
+        return true
+      // AI 模式：岗位信息提取
+      case 'EXTRACT_JOB':
+        bridge('/api/automation/ai/extract-job', { method: 'POST', body: JSON.stringify(message.payload) })
+          .then(sendResponse)
+          .catch((e) => sendResponse({ error: String(e) }))
+        return true
+      // AI 模式：简历生成
+      case 'GENERATE_RESUME':
+        bridge('/api/automation/ai/generate-resume', { method: 'POST', body: JSON.stringify(message.payload) })
+          .then(sendResponse)
+          .catch((e) => sendResponse({ error: String(e) }))
+        return true
       default:
         return false
     }

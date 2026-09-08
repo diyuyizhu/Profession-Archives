@@ -141,11 +141,11 @@ export function upsertProfile(payload: ProfilePayload): Profile {
       db.prepare(
         `INSERT INTO profiles (id, full_name, headline, email, phone, summary, card_theme, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(id, payload.full_name, payload.headline ?? null, payload.email ?? null, payload.phone ?? null, payload.summary ?? null, payload.card_theme ?? 'trae', ts, ts)
+      ).run(id, payload.full_name, payload.headline ?? null, payload.email ?? null, payload.phone ?? null, payload.summary ?? null, payload.card_theme ?? 'classic', ts, ts)
     } else {
       db.prepare(
         `UPDATE profiles SET full_name=?, headline=?, email=?, phone=?, summary=?, card_theme=?, updated_at=? WHERE id=?`,
-      ).run(payload.full_name, payload.headline ?? null, payload.email ?? null, payload.phone ?? null, payload.summary ?? null, payload.card_theme ?? 'trae', ts, id)
+      ).run(payload.full_name, payload.headline ?? null, payload.email ?? null, payload.phone ?? null, payload.summary ?? null, payload.card_theme ?? 'classic', ts, id)
       for (const t of ['skills', 'experiences', 'education', 'projects', 'journal_entries']) {
         db.prepare(`DELETE FROM ${t} WHERE profile_id = ?`).run(id)
       }

@@ -4,7 +4,16 @@
  */
 import { db } from '../db.js'
 
-export type AiCapability = 'extract' | 'polish' | 'match' | 'reflect' | 'learn'
+export type AiCapability =
+  | 'extract'
+  | 'polish'
+  | 'match'
+  | 'reflect'
+  | 'learn'
+  | 'analyze_fields'
+  | 'extract_job'
+  | 'parse_resume'
+  | 'generate_resume'
 
 export interface AiConfigRow {
   provider: 'cloud' | 'local'
@@ -59,6 +68,25 @@ const PROMPTS: Record<AiCapability, string> = {
   match: '你是招聘匹配分析师。分析下面简历与 JD 的匹配度，输出匹配分、已覆盖/缺口关键词与定制个人简介建议。',
   reflect: '你是面试复盘教练。基于下面的面试记录，输出：做得好 / 待改进 / 下次策略 三部分要点（中文）。',
   learn: '你是成长规划师。基于下面的短板与复盘，输出一份可执行的学习计划（3-6 个任务，含优先级）。',
+  analyze_fields:
+    '你是网页表单字段识别引擎。对给定的表单字段列表，把每个字段映射到目标档案字段之一：' +
+    'full_name / email / phone / headline / summary / other。' +
+    '只输出 JSON 数组，形如 [{"key":"<用输入提供的 index>","target":"full_name"}]，不要输出任何其他文字。',
+  extract_job:
+    '你是招聘信息提取引擎。从给定的招聘页面文本中提取岗位信息，' +
+    '输出 JSON 对象 {"company":"公司名","title":"岗位名","jd":"岗位描述正文"}，' +
+    '无法确定的字段值为空字符串。只输出 JSON，不要输出任何其他文字。',
+  parse_resume:
+    '你是简历解析引擎。把给定的简历文本解析为结构化 JSON：' +
+    '{"full_name":"","email":"","phone":"","headline":"","summary":"",' +
+    '"skills":[{"name":"","category":"","level":3}],' +
+    '"experiences":[{"role":"","company":"","description_md":"","start_date":"","end_date":""}],' +
+    '"education":[{"school":"","degree":"","major":"","start_date":"","end_date":""}],' +
+    '"projects":[{"name":"","summary":"","description_md":""}]}。' +
+    '日期用 YYYY-MM-DD 或 YYYY-MM。只输出 JSON，不要输出任何其他文字。',
+  generate_resume:
+    '你是简历生成引擎。基于给定的目标 JD 与个人档案材料，生成一份定制简历（Markdown 格式，' +
+    '包含个人简介、技能、工作经历、项目经历；强调与 JD 相关的经历与关键词，中文输出）。',
 }
 
 /**

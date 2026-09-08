@@ -1,13 +1,14 @@
 <script setup lang="ts">
 /**
  * popup 面板：配对 + 采集岗位 + 填充投递表单 + 清除高亮。
- * 风格与主应用一致（暗色 #0a0b0d + 薄荷绿 #32f08c + 毛玻璃卡片）。
+ * 风格与主应用一致（经典黑白：白底 + 墨黑 + 灰阶）。
  */
 import { onMounted, ref } from 'vue'
 
 const pairingCode = ref('')
 const status = ref('未配对')
 const actionMsg = ref('')
+const mode = ref<'keyword' | 'ai'>('keyword')
 
 async function currentTabId(): Promise<number | undefined> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -15,10 +16,16 @@ async function currentTabId(): Promise<number | undefined> {
 }
 
 onMounted(async () => {
-  const stored = await chrome.storage.local.get('pairingCode')
+  const stored = await chrome.storage.local.get(['pairingCode', 'mode'])
   pairingCode.value = stored.pairingCode ?? ''
+  mode.value = stored.mode === 'ai' ? 'ai' : 'keyword'
   status.value = pairingCode.value ? '已配对（本机）' : '未配对'
 })
+
+async function saveMode(m: 'keyword' | 'ai'): Promise<void> {
+  mode.value = m
+  await chrome.storage.local.set({ mode: m })
+}
 
 async function savePairing(): Promise<void> {
   await chrome.storage.local.set({ pairingCode: pairingCode.value.trim() })
@@ -35,6 +42,38 @@ function flash(msg: string): void {
 async function collectJob(): Promise<void> {
   const tabId = await currentTabId()
   if (!tabId) return flash('未找到当前标签页')
+
+  if (mode.value === 'ai') {
+    // AI 模式：发页面文本 → 桥 AI 提取岗位
+    const page = await chrome.tabs
+      .sendMessage(tabId, { type: 'COLLECT_PAGE_TEXT' })
+      .catch(() => null)
+    if (!page?.text) return flash('当前页面无法采集（请刷新后重试）')
+    const res = await chrome.runtime.sendMessage({
+      type: 'EXTRACT_JOB',
+      payload: { text: page.text },
+    })
+    if (!res?.job) return flash(`AI 提取失败：${res?.error ?? '未知'}`)
+    const job = res.job as { company?: string; title?: string; jd?: string }
+    // 兜底：company/title 为空时回退到页面标题启发式
+    const title =
+      job.title?.trim() ||
+      page.title ||
+      '未命名岗位'
+    const company =
+      job.company?.trim() ||
+      (page.title ? page.title.split(/[-_|·]/)[0]?.trim() : undefined) ||
+      '未知公司'
+    const submit = await chrome.runtime.sendMessage({
+      type: 'COLLECT_JOB',
+      payload: { company, title, url: page.url, jd: job.jd },
+    })
+    if (submit?.ok) flash(`已采集「${title}」→ 看板备选池`)
+    else flash(`采集失败：${submit?.error ?? '未知'}`)
+    return
+  }
+
+  // 关键词模式：本地启发式提取
   const info = await chrome.tabs.sendMessage(tabId, { type: 'COLLECT_CURRENT_PAGE' }).catch(() => null)
   if (!info?.title) return flash('当前页面无法采集（请刷新后重试）')
   const res = await chrome.runtime.sendMessage({
@@ -84,6 +123,27 @@ async function clearFill(): Promise<void> {
       </span>
     </div>
 
+    <!-- 模式切换 -->
+    <div class="pa-row">
+      <span class="pa-label" style="margin-top: 0">识别模式</span>
+      <div class="pa-seg">
+        <button
+          class="pa-seg-btn"
+          :class="{ on: mode === 'keyword' }"
+          @click="saveMode('keyword')"
+        >
+          关键词
+        </button>
+        <button
+          class="pa-seg-btn"
+          :class="{ on: mode === 'ai' }"
+          @click="saveMode('ai')"
+        >
+          AI 分析
+        </button>
+      </div>
+    </div>
+
     <!-- 操作 -->
     <button class="pa-btn pa-btn-ghost" @click="collectJob">采集当前岗位 → 看板</button>
     <button class="pa-btn pa-btn-primary" @click="fillForm">填充投递表单</button>
@@ -105,7 +165,7 @@ async function clearFill(): Promise<void> {
   flex-direction: column;
   gap: 8px;
   font-size: 13px;
-  color: #f5f9fe;
+  color: #111827;
 }
 
 /* 头部 */
@@ -118,22 +178,19 @@ async function clearFill(): Promise<void> {
 .pa-title {
   font-weight: 600;
   letter-spacing: 0.02em;
-  background: linear-gradient(90deg, #3ee1a3, #32f08c 40%, #a0fde7);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #111827;
 }
 .pa-version {
   font-family: ui-monospace, monospace;
   font-size: 11px;
-  color: rgba(245, 249, 254, 0.35);
+  color: #9ca3af;
 }
 
 /* 标签 / 输入 */
 .pa-label {
   display: block;
   font-size: 11px;
-  color: rgba(245, 249, 254, 0.55);
+  color: #6b7280;
   margin-top: 4px;
 }
 .pa-input {
@@ -141,19 +198,19 @@ async function clearFill(): Promise<void> {
   box-sizing: border-box;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(237, 239, 242, 0.06);
-  color: #f5f9fe;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #111827;
   font-size: 12.5px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .pa-input::placeholder {
-  color: rgba(245, 249, 254, 0.3);
+  color: #9ca3af;
 }
 .pa-input:focus {
-  border-color: rgba(50, 240, 140, 0.6);
-  box-shadow: 0 0 0 3px rgba(50, 240, 140, 0.12);
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
 }
 
 /* 行 / 状态 */
@@ -168,20 +225,19 @@ async function clearFill(): Promise<void> {
   align-items: center;
   gap: 6px;
   font-size: 11.5px;
-  color: rgba(245, 249, 254, 0.45);
+  color: #6b7280;
 }
 .pa-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: rgba(245, 249, 254, 0.25);
+  background: #d1d5db;
 }
 .pa-status.on .pa-dot {
-  background: #32f08c;
-  box-shadow: 0 0 6px rgba(50, 240, 140, 0.7);
+  background: #111827;
 }
 .pa-status.on {
-  color: #32f08c;
+  color: #111827;
 }
 
 /* 按钮 */
@@ -196,32 +252,31 @@ async function clearFill(): Promise<void> {
   font-family: inherit;
 }
 .pa-btn-ghost {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(237, 239, 242, 0.05);
-  color: rgba(245, 249, 254, 0.75);
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #374151;
 }
 .pa-btn-ghost:hover {
-  border-color: rgba(50, 240, 140, 0.4);
-  color: #32f08c;
-  background: rgba(50, 240, 140, 0.06);
+  border-color: #111827;
+  color: #111827;
+  background: #f9fafb;
 }
 .pa-btn-primary {
-  border: 1px solid rgba(50, 240, 140, 0.5);
-  background: rgba(50, 240, 140, 0.12);
-  color: #32f08c;
+  border: 1px solid #111827;
+  background: #111827;
+  color: #ffffff;
   font-weight: 500;
 }
 .pa-btn-primary:hover {
-  background: rgba(50, 240, 140, 0.2);
-  box-shadow: 0 0 12px rgba(50, 240, 140, 0.25);
+  background: #000000;
 }
 
 /* 反馈提示 */
 .pa-msg {
   border-radius: 8px;
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  background: rgba(251, 191, 36, 0.08);
-  color: #fbbf24;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #111827;
   padding: 8px 10px;
   font-size: 11.5px;
   line-height: 1.5;
@@ -231,9 +286,34 @@ async function clearFill(): Promise<void> {
 .pa-foot {
   margin-top: 4px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid #e5e7eb;
   font-size: 10.5px;
   line-height: 1.5;
-  color: rgba(245, 249, 254, 0.35);
+  color: #9ca3af;
+}
+
+/* 模式切换 */
+.pa-seg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+.pa-seg-btn {
+  padding: 5px 10px;
+  font-size: 11px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.pa-seg-btn.on {
+  background: #111827;
+  color: #ffffff;
+}
+.pa-seg-btn:hover {
+  color: #111827;
 }
 </style>

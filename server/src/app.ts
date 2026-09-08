@@ -8,8 +8,10 @@ import Fastify from 'fastify'
 import { initSchema } from './db.js'
 import { getProfile, listProfiles, upsertProfile } from './profile.js'
 import { registerAiRoutes } from './routes/ai.js'
+import { registerAutomationAiRoutes } from './routes/automation-ai.js'
 import { registerAutomationRoutes } from './routes/automation.js'
 import { registerVerifyRoutes } from './routes/verify.js'
+import { registerScrapeRoutes } from './services/scrapeService.js'
 
 export function buildApp() {
   const app = Fastify({ logger: true })
@@ -63,6 +65,8 @@ export function buildApp() {
   registerAiRoutes(app)
   registerVerifyRoutes(app)
   registerAutomationRoutes(app)
+  registerAutomationAiRoutes(app)
+  registerScrapeRoutes(app)
 
   return app
 }

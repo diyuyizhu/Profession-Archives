@@ -9,7 +9,10 @@ import type { FastifyInstance } from 'fastify'
 import { requirePairing } from '../plugins/auth.js'
 import { callAi, getAiConfig, type AiCapability } from '../services/aiService.js'
 
-const CAPABILITIES: AiCapability[] = ['extract', 'polish', 'match', 'reflect', 'learn']
+const CAPABILITIES: AiCapability[] = [
+  'extract', 'polish', 'match', 'reflect', 'learn',
+  'analyze_fields', 'extract_job', 'parse_resume', 'generate_resume',
+]
 
 interface AiBody {
   capability: AiCapability

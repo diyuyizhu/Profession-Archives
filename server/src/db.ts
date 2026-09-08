@@ -36,7 +36,7 @@ export function initSchema(): void {
       email       TEXT,
       phone       TEXT,
       summary     TEXT,
-      card_theme  TEXT NOT NULL DEFAULT 'trae',
+      card_theme  TEXT NOT NULL DEFAULT 'classic',
       created_at  TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -175,6 +175,7 @@ export function initSchema(): void {
   ensureColumn('projects', 'start_date', 'TEXT')
   ensureColumn('projects', 'end_date', 'TEXT')
   ensureColumn('journal_entries', 'collection_id', 'TEXT')
+  ensureColumn('applications', 'groups_json', "TEXT NOT NULL DEFAULT '[]'")
 
   // 字段映射 per-origin 唯一：清理历史重复后建唯一索引，供插件去重记忆
   db.exec(`

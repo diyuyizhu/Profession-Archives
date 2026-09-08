@@ -95,8 +95,8 @@ async function main(): Promise<void> {
   const { upsertProfile, getProfile } = await import('../server/src/profile.ts')
   const { upsertAiConfig, callAi } = await import('../server/src/services/aiService.ts')
   initSchema()
-  const p1 = upsertProfile({ full_name: '冒烟', skills: [], experiences: [], education: [], projects: [], journal: [], card_theme: 'trae' })
-  const p2 = upsertProfile({ full_name: '冒烟', skills: [], experiences: [], education: [], projects: [], journal: [], card_theme: 'trae' })
+  const p1 = upsertProfile({ full_name: '冒烟', skills: [], experiences: [], education: [], projects: [], journal: [], card_theme: 'classic' })
+  const p2 = upsertProfile({ full_name: '冒烟', skills: [], experiences: [], education: [], projects: [], journal: [], card_theme: 'classic' })
   assert(p1.id === p2.id && getProfile(p1.id)?.full_name === '冒烟', '单档案 upsert（不重复）')
   upsertAiConfig({ provider: 'cloud', data_exit_consented: 1, cloud_api_key: 'sk', cloud_endpoint: 'http://169.254.169.254' })
   try {

@@ -39,6 +39,7 @@ export function registerAutomationRoutes(app: FastifyInstance): void {
       url?: string
       channel?: string
       tags?: string[]
+      groups?: string[]
       snapshot?: string
     }
     if (!b.company?.trim() || !b.title?.trim()) {
@@ -48,8 +49,8 @@ export function registerAutomationRoutes(app: FastifyInstance): void {
     const ts = new Date().toISOString()
     db.prepare(
       `INSERT INTO applications
-        (id, company, title, url, jd, channel, status, tags_json, applied_at, created_at, updated_at)
-       VALUES (@id, @company, @title, @url, @jd, @channel, 'backlog', @tags, NULL, @ts, @ts)`,
+        (id, company, title, url, jd, channel, status, tags_json, groups_json, applied_at, created_at, updated_at)
+       VALUES (@id, @company, @title, @url, @jd, @channel, 'backlog', @tags, @groups, NULL, @ts, @ts)`,
     ).run({
       id,
       company: b.company.trim(),
@@ -58,6 +59,7 @@ export function registerAutomationRoutes(app: FastifyInstance): void {
       jd: b.jd?.trim() || null,
       channel: b.channel?.trim() || null,
       tags: JSON.stringify(b.tags ?? []),
+      groups: JSON.stringify(b.groups ?? []),
       ts,
     })
     return { ok: true, id }
