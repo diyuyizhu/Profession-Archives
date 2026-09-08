@@ -155,7 +155,6 @@ function setRating(n: number): void {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-6xl px-6 pb-16">
       <PageHeader code="C1/C2" title="面试记录" desc="记录轮次 · 结果自动推进看板" />
@@ -167,7 +166,7 @@ function setRating(n: number): void {
         v-if="flash"
         role="status"
         aria-live="polite"
-        class="card-glass fixed left-1/2 top-20 z-50 -translate-x-1/2 px-5 py-3 text-[13px] text-[#60f2bd]"
+        class="card-glass fixed left-1/2 top-20 z-50 -translate-x-1/2 px-5 py-3 text-[13px] text-neutral-600"
       >
         {{ flash }}
       </div>
@@ -191,19 +190,19 @@ function setRating(n: number): void {
             class="card-glass flex h-[300px] flex-col items-center justify-center gap-3 text-center"
           >
             <span class="text-3xl">🎯</span>
-            <div class="text-[14px] text-[rgba(245,249,254,0.6)]">从左侧选择一个投递开始记录</div>
-            <div class="text-[12px] text-[rgba(245,249,254,0.35)]">
+            <div class="text-[14px] text-neutral-600">从左侧选择一个投递开始记录</div>
+            <div class="text-[12px] text-neutral-400">
               每一轮结果都会自动推进看板状态
             </div>
           </div>
 
           <div v-else class="space-y-4">
             <!-- 投递摘要 -->
-            <div class="card-glass p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+            <div class="card-glass p-5">
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div class="heading-tight text-[17px] text-[#f5f9fe]">{{ selected.title }}</div>
-                  <div class="mt-0.5 text-[12.5px] text-[rgba(245,249,254,0.5)]">
+                  <div class="heading-tight text-[17px] text-neutral-900">{{ selected.title }}</div>
+                  <div class="mt-0.5 text-[12.5px] text-neutral-500">
                     {{ selected.company }}<span v-if="selected.channel"> · {{ selected.channel }}</span>
                   </div>
                 </div>
@@ -225,20 +224,20 @@ function setRating(n: number): void {
             </div>
 
             <!-- 新轮次表单 -->
-            <div v-if="showForm" class="card-glass p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+            <div v-if="showForm" class="card-glass p-5">
               <div class="mb-4 flex items-center justify-between">
-                <span class="text-[13px] font-semibold text-[#f5f9fe]">第 {{ nextRound }} 轮面试</span>
+                <span class="text-[13px] font-semibold text-neutral-900">第 {{ nextRound }} 轮面试</span>
                 <SecondaryButton @click="showForm = false">收起</SecondaryButton>
               </div>
 
               <div class="space-y-4">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                   <label class="block">
-                    <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">日期 *</span>
+                    <span class="mb-1.5 block text-xs text-neutral-500">日期 *</span>
                     <input v-model="form.occurred_at" type="date" class="input-trae" />
                   </label>
                   <label class="block">
-                    <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">形式</span>
+                    <span class="mb-1.5 block text-xs text-neutral-500">形式</span>
                     <select v-model="form.interview_type" class="input-trae appearance-none">
                       <option v-for="(label, key) in INTERVIEW_TYPE_LABELS" :key="key" :value="key">
                         {{ label }}
@@ -246,11 +245,11 @@ function setRating(n: number): void {
                     </select>
                   </label>
                   <label class="block">
-                    <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">面试官</span>
+                    <span class="mb-1.5 block text-xs text-neutral-500">面试官</span>
                     <input v-model="form.interviewer" class="input-trae" placeholder="姓名 / 角色" />
                   </label>
                   <label class="block">
-                    <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">结果</span>
+                    <span class="mb-1.5 block text-xs text-neutral-500">结果</span>
                     <select v-model="form.result" class="input-trae appearance-none">
                       <option v-for="(label, key) in INTERVIEW_RESULT_LABELS" :key="key" :value="key">
                         {{ label }}
@@ -261,7 +260,7 @@ function setRating(n: number): void {
 
                 <!-- 自评 -->
                 <div class="flex flex-wrap items-center gap-3">
-                  <span class="text-xs text-[rgba(245,249,254,0.55)]" id="self-rating-label">自评</span>
+                  <span class="text-xs text-neutral-500" id="self-rating-label">自评</span>
                   <div class="flex gap-1" role="group" aria-labelledby="self-rating-label">
                     <button
                       v-for="n in 5"
@@ -276,7 +275,7 @@ function setRating(n: number): void {
                       ⭐
                     </button>
                   </div>
-                  <span class="font-mono text-[11px] text-[rgba(245,249,254,0.4)]">
+                  <span class="font-mono text-[11px] text-neutral-400">
                     {{ form.self_rating }}/5
                   </span>
                 </div>
@@ -284,9 +283,9 @@ function setRating(n: number): void {
                 <!-- 题目与回答 -->
                 <div>
                   <div class="mb-2 flex items-center justify-between">
-                    <span class="text-xs text-[rgba(245,249,254,0.55)]">题目与我的回答（可多题）</span>
+                    <span class="text-xs text-neutral-500">题目与我的回答（可多题）</span>
                     <button
-                      class="rounded-full border border-[rgba(50,240,140,0.35)] bg-[rgba(50,240,140,0.08)] px-2.5 py-0.5 text-[11px] text-[#32f08c]"
+                      class="rounded-full border border-neutral-400 bg-neutral-100 px-2.5 py-0.5 text-[11px] text-neutral-900"
                       @click="addQa"
                     >
                       ＋ 添加题目
@@ -296,12 +295,12 @@ function setRating(n: number): void {
                     <div
                       v-for="(qa, i) in form.qa"
                       :key="i"
-                      class="rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(237,239,242,0.04)] p-3"
+                      class="rounded-lg border border-neutral-200 bg-neutral-50 p-3"
                     >
                       <div class="flex items-center justify-between gap-2">
-                        <span class="text-[11px] font-medium text-[rgba(245,249,254,0.5)]">#{{ i + 1 }}</span>
+                        <span class="text-[11px] font-medium text-neutral-500">#{{ i + 1 }}</span>
                         <button
-                          class="text-[11px] text-[rgba(245,249,254,0.35)] hover:text-[#f87171]"
+                          class="text-[11px] text-neutral-400 hover:text-red-600"
                           @click="removeQa(i)"
                         >
                           移除
@@ -323,14 +322,14 @@ function setRating(n: number): void {
                   </div>
                   <div
                     v-else
-                    class="rounded-lg border border-dashed border-[rgba(255,255,255,0.1)] px-3 py-4 text-center text-[11.5px] text-[rgba(245,249,254,0.3)]"
+                    class="rounded-lg border border-dashed border-neutral-300 px-3 py-4 text-center text-[11.5px] text-neutral-400"
                   >
                     暂无题目，可点「＋ 添加题目」记录
                   </div>
                 </div>
 
                 <label class="block">
-                  <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">备注 / 感受</span>
+                  <span class="mb-1.5 block text-xs text-neutral-500">备注 / 感受</span>
                   <textarea
                     v-model="form.notes"
                     class="input-trae min-h-[60px] resize-y py-2.5"
@@ -340,8 +339,8 @@ function setRating(n: number): void {
 
                 <!-- 沉淀题库 -->
                 <label class="flex cursor-pointer items-center gap-2.5">
-                  <input v-model="form.toBank" type="checkbox" class="h-4 w-4 accent-[#32f08c]" />
-                  <span class="text-[12.5px] text-[rgba(245,249,254,0.7)]">
+                  <input v-model="form.toBank" type="checkbox" class="h-4 w-4 accent-neutral-900" />
+                  <span class="text-[12.5px] text-neutral-700">
                     本题自动沉淀到面经题库（C4，重复题目跳过）
                   </span>
                 </label>
@@ -363,32 +362,32 @@ function setRating(n: number): void {
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <div class="flex flex-wrap items-center gap-2">
                     <span
-                      class="rounded-full border border-[rgba(50,240,140,0.3)] bg-[rgba(50,240,140,0.08)] px-2 py-0.5 font-mono text-[11px] text-[#32f08c]"
+                      class="rounded-full border border-neutral-300 bg-neutral-100 px-2 py-0.5 font-mono text-[11px] text-neutral-900"
                     >
                       第 {{ interview.round }} 轮
                     </span>
-                    <span class="font-mono text-[11px] text-[rgba(245,249,254,0.35)]">
+                    <span class="font-mono text-[11px] text-neutral-400">
                       {{ interview.occurred_at }}
                     </span>
-                    <span class="text-[11px] text-[rgba(245,249,254,0.4)]">
+                    <span class="text-[11px] text-neutral-400">
                       {{ INTERVIEW_TYPE_LABELS[interview.interview_type] }}
                     </span>
-                    <span v-if="interview.interviewer" class="text-[11px] text-[rgba(245,249,254,0.4)]">
+                    <span v-if="interview.interviewer" class="text-[11px] text-neutral-400">
                       面试官：{{ interview.interviewer }}
                     </span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <span class="text-[11px] text-[rgba(245,249,254,0.4)]">
+                    <span class="text-[11px] text-neutral-400">
                       ⭐ {{ interview.self_rating }}/5
                     </span>
                     <span
                       class="rounded-full border px-2 py-0.5 text-[11px]"
                       :class="
                         interview.result === 'passed'
-                          ? 'border-[rgba(50,240,140,0.4)] bg-[rgba(50,240,140,0.1)] text-[#32f08c]'
+                          ? 'border-neutral-900 bg-neutral-100 text-neutral-900'
                           : interview.result === 'failed'
-                            ? 'border-[rgba(248,113,113,0.35)] bg-[rgba(248,113,113,0.08)] text-[#f87171]'
-                            : 'border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.08)] text-[#fbbf24]'
+                            ? 'border-red-300 bg-red-50 text-red-600'
+                            : 'border-neutral-300 bg-neutral-100 text-neutral-600'
                       "
                     >
                       {{ INTERVIEW_RESULT_LABELS[interview.result] }}
@@ -401,22 +400,22 @@ function setRating(n: number): void {
                   <div
                     v-for="(qa, i) in interview.qa"
                     :key="i"
-                    class="rounded-lg border border-[rgba(255,255,255,0.07)] bg-[rgba(237,239,242,0.03)] px-3 py-2.5"
+                    class="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5"
                   >
-                    <div class="text-[13px] text-[#f5f9fe]">{{ qa.question }}</div>
-                    <p v-if="qa.answer" class="mt-1 text-[12.5px] leading-relaxed text-[rgba(245,249,254,0.55)]">
+                    <div class="text-[13px] text-neutral-900">{{ qa.question }}</div>
+                    <p v-if="qa.answer" class="mt-1 text-[12.5px] leading-relaxed text-neutral-500">
                       {{ qa.answer }}
                     </p>
                   </div>
                 </div>
 
-                <p v-if="interview.notes" class="mt-2.5 text-[12px] text-[rgba(245,249,254,0.45)]">
+                <p v-if="interview.notes" class="mt-2.5 text-[12px] text-neutral-500">
                   {{ interview.notes }}
                 </p>
 
-                <div class="mt-2.5 flex items-center gap-2 border-t border-[rgba(255,255,255,0.06)] pt-2.5">
+                <div class="mt-2.5 flex items-center gap-2 border-t border-neutral-200 pt-2.5">
                   <button
-                    class="text-[11px] text-[rgba(245,249,254,0.35)] transition-colors hover:text-[#f87171]"
+                    class="text-[11px] text-neutral-400 transition-colors hover:text-red-600"
                     @click="interviewStore.removeInterview(interview.id)"
                   >
                     删除本轮
@@ -427,7 +426,7 @@ function setRating(n: number): void {
 
             <div
               v-else
-              class="card-glass px-5 py-10 text-center text-[12.5px] text-[rgba(245,249,254,0.35)]"
+              class="card-glass px-5 py-10 text-center text-[12.5px] text-neutral-400"
             >
               还没有面试记录，点击右上角「记录第 {{ nextRound }} 轮」
             </div>

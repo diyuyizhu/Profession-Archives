@@ -8,7 +8,6 @@ import type { Component } from 'vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import AuraBackground from '@/components/AuraBackground.vue'
 import CardBusinessCard from '@/components/dashboard/CardBusinessCard.vue'
 import CardLearning from '@/components/dashboard/CardLearning.vue'
 import CardMiniBoard from '@/components/dashboard/CardMiniBoard.vue'
@@ -45,23 +44,20 @@ function toggleEdit(): void {
 
 <template>
   <div class="relative min-h-full">
-    <!-- 顶部氛围光（随内容滚动） -->
-    <AuraBackground variant="top" />
-
     <div class="relative z-1 mx-auto max-w-6xl px-6 pb-16">
       <!-- ═══════ 欢迎区 ═══════ -->
       <section class="flex flex-wrap items-end justify-between gap-4 py-8">
         <div class="min-w-0">
           <div
-            class="mb-3 flex w-fit items-center gap-2 rounded-full border border-[rgba(50,240,140,0.25)] bg-[rgba(50,240,140,0.06)] px-3 py-1 text-xs text-[#32f08c]"
+            class="mb-3 flex w-fit items-center gap-2 rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1 text-xs text-neutral-900"
           >
-            <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-[#32f08c]" />
+            <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-900" />
             本地优先 · AI 辅助 · 长期主义
           </div>
-          <h1 class="heading-tight text-2xl tracking-wide text-[#f5f9fe]">
+          <h1 class="heading-tight text-2xl tracking-wide text-neutral-900">
             欢迎使用 <span class="text-brand-gradient">生涯大脑</span>
           </h1>
-          <p class="mt-1 text-sm text-[rgba(245,249,254,0.55)]">
+          <p class="mt-1 text-sm text-neutral-500">
             你的职业资产仪表盘 · 可自定义布局
           </p>
         </div>
@@ -77,14 +73,13 @@ function toggleEdit(): void {
       <div
         v-if="editing"
         class="card-glass mb-5 flex flex-wrap items-center justify-between gap-3 p-4"
-        style="backdrop-filter: blur(28px) saturate(1.6)"
       >
-        <span class="text-[12.5px] text-[rgba(245,249,254,0.6)]">
-          编辑模式：卡片可 <span class="text-[#32f08c]">上移 / 下移</span> 排序，或
-          <span class="text-[#f87171]">隐藏</span>；隐藏的卡片在底部托盘恢复。
+        <span class="text-[12.5px] text-neutral-600">
+          编辑模式：卡片可 <span class="text-neutral-900">上移 / 下移</span> 排序，或
+          <span class="text-red-600">隐藏</span>；隐藏的卡片在底部托盘恢复。
         </span>
         <button
-          class="rounded-full border border-[rgba(255,255,255,0.15)] px-3 py-1 text-[12px] text-[rgba(245,249,254,0.6)] hover:text-[#f5f9fe]"
+          class="rounded-full border border-neutral-300 px-3 py-1 text-[12px] text-neutral-600 hover:text-neutral-900"
           @click="dash.reset()"
         >
           恢复默认布局
@@ -108,16 +103,15 @@ function toggleEdit(): void {
       <section
         v-if="editing && dash.hidden.length"
         class="card-glass mt-5 p-4"
-        style="backdrop-filter: blur(28px) saturate(1.6)"
       >
-        <div class="mb-2.5 text-[12px] font-medium text-[rgba(245,249,254,0.45)]">
+        <div class="mb-2.5 text-[12px] font-medium text-neutral-500">
           已隐藏卡片（点击恢复）
         </div>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="key in dash.hidden"
             :key="key"
-            class="rounded-full border border-dashed border-[rgba(255,255,255,0.2)] px-3 py-1 text-[12px] text-[rgba(245,249,254,0.55)] transition-colors hover:border-[rgba(50,240,140,0.4)] hover:text-[#32f08c]"
+            class="rounded-full border border-dashed border-neutral-400 px-3 py-1 text-[12px] text-neutral-500 transition-colors hover:border-neutral-900 hover:text-neutral-900"
             @click="dash.show(key)"
           >
             ＋ {{ titleOf(key) }}

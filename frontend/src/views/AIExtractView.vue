@@ -38,9 +38,9 @@ const TYPE_LABEL: Record<JournalEntry['entry_type'], string> = {
 }
 
 const TYPE_COLOR: Record<JournalEntry['entry_type'], string> = {
-  journal: 'text-[rgba(245,249,254,0.5)]',
-  achievement: 'text-[#32f08c]',
-  milestone: 'text-[#a78bfa]',
+  journal: 'text-neutral-500',
+  achievement: 'text-neutral-900',
+  milestone: 'text-neutral-700',
 }
 
 function toggle(id: string): void {
@@ -96,7 +96,6 @@ function snippetOf(md: string, max = 56): string {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-5xl px-6 pb-16">
       <PageHeader code="E2" title="素材提炼" desc="选中零散记录 → 提炼成简历可用的结构化亮点" />
@@ -105,12 +104,12 @@ function snippetOf(md: string, max = 56): string {
 
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]">
         <!-- 左：素材选择 -->
-        <section class="card-glass h-fit p-4" style="backdrop-filter: blur(28px) saturate(1.6)">
+        <section class="card-glass h-fit p-4">
           <div class="mb-3 flex items-center justify-between">
-            <span class="text-[13px] font-semibold text-[#f5f9fe]">
+            <span class="text-[13px] font-semibold text-neutral-900">
               选择素材（{{ selectedIds.size }}/{{ entries.length }}）
             </span>
-            <button class="text-[11.5px] text-[rgba(245,249,254,0.4)] hover:text-[#32f08c]" @click="toggleAll">
+            <button class="text-[11.5px] text-neutral-400 hover:text-neutral-900" @click="toggleAll">
               {{ selectedIds.size === entries.length ? '全不选' : '全选' }}
             </button>
           </div>
@@ -124,8 +123,8 @@ function snippetOf(md: string, max = 56): string {
               :aria-pressed="selectedIds.has(entry.id)"
               :class="
                 selectedIds.has(entry.id)
-                  ? 'border-[rgba(50,240,140,0.4)] bg-[rgba(50,240,140,0.08)]'
-                  : 'border-[rgba(255,255,255,0.08)] bg-[rgba(237,239,242,0.03)] hover:bg-[rgba(237,239,242,0.06)]'
+                  ? 'border-neutral-900 bg-neutral-100'
+                  : 'border-neutral-200 bg-neutral-50 hover:bg-neutral-100'
               "
               @click="toggle(entry.id)"
             >
@@ -133,21 +132,21 @@ function snippetOf(md: string, max = 56): string {
                 <span class="text-[12px] font-medium" :class="TYPE_COLOR[entry.entry_type]">
                   {{ TYPE_LABEL[entry.entry_type] }}
                 </span>
-                <span class="shrink-0 font-mono text-[10.5px] text-[rgba(245,249,254,0.3)]">
+                <span class="shrink-0 font-mono text-[10.5px] text-neutral-400">
                   {{ entry.occurred_at }}
                 </span>
               </div>
-              <div v-if="entry.title" class="mt-1 truncate text-[13px] font-semibold text-[#f5f9fe]">
+              <div v-if="entry.title" class="mt-1 truncate text-[13px] font-semibold text-neutral-900">
                 {{ entry.title }}
               </div>
-              <div class="mt-0.5 line-clamp-2 text-[11.5px] text-[rgba(245,249,254,0.5)]">
+              <div class="mt-0.5 line-clamp-2 text-[11.5px] text-neutral-500">
                 {{ snippetOf(entry.content_md) }}
               </div>
               <div v-if="entry.tags.length" class="mt-1.5 flex flex-wrap gap-1">
                 <span
                   v-for="t in entry.tags"
                   :key="t"
-                  class="rounded bg-[rgba(237,239,242,0.06)] px-1.5 py-0.5 text-[10px] text-[rgba(245,249,254,0.4)]"
+                  class="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-400"
                 >
                   #{{ t }}
                 </span>
@@ -156,7 +155,7 @@ function snippetOf(md: string, max = 56): string {
 
             <div
               v-if="!entries.length"
-              class="px-3 py-10 text-center text-[12px] text-[rgba(245,249,254,0.3)]"
+              class="px-3 py-10 text-center text-[12px] text-neutral-400"
             >
               档案里还没有日记/成就/里程碑，先去「生涯档案」记录
             </div>
@@ -165,24 +164,24 @@ function snippetOf(md: string, max = 56): string {
 
         <!-- 右：提炼结果 -->
         <section class="min-w-0">
-          <div class="card-glass p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+          <div class="card-glass p-5">
             <div class="mb-4 flex items-center justify-between">
-              <span class="text-[13px] font-semibold text-[#f5f9fe]">提炼结果</span>
-              <span class="text-[11px] text-[rgba(245,249,254,0.35)]">本地启发式 · 接入 AI 后升级</span>
+              <span class="text-[13px] font-semibold text-neutral-900">提炼结果</span>
+              <span class="text-[11px] text-neutral-400">本地启发式 · 接入 AI 后升级</span>
             </div>
 
             <PrimaryButton :disabled="!selectedIds.size" @click="generate">
               提炼 {{ selectedIds.size }} 条素材
             </PrimaryButton>
 
-            <div v-if="!result" class="mt-6 px-2 py-10 text-center text-[12px] text-[rgba(245,249,254,0.3)]">
+            <div v-if="!result" class="mt-6 px-2 py-10 text-center text-[12px] text-neutral-400">
               左侧选择素材后点击提炼，结果可编辑、可保存为成就
             </div>
 
             <div v-else class="mt-4 space-y-4">
               <!-- 要点 -->
               <div>
-                <div class="mb-2 text-[11.5px] font-medium text-[rgba(245,249,254,0.4)]">提炼要点</div>
+                <div class="mb-2 text-[11.5px] font-medium text-neutral-400">提炼要点</div>
                 <div v-for="(bullet, i) in result.bullets" :key="i" class="mb-1.5 flex items-center gap-2">
                   <input v-model="result.bullets[i]" class="input-trae h-9 text-[12.5px]" />
                 </div>
@@ -190,7 +189,7 @@ function snippetOf(md: string, max = 56): string {
 
               <!-- 摘要（成就正文） -->
               <label class="block">
-                <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">结构化摘要（保存为成就的正文）</span>
+                <span class="mb-1.5 block text-xs text-neutral-500">结构化摘要（保存为成就的正文）</span>
                 <textarea
                   v-model="result.summary"
                   class="input-trae min-h-[110px] resize-y py-2.5"
@@ -199,10 +198,10 @@ function snippetOf(md: string, max = 56): string {
 
               <div class="flex items-center gap-3">
                 <PrimaryButton @click="saveAsAchievement">保存为成就</PrimaryButton>
-                <span v-if="savedNote" role="status" aria-live="polite" class="text-[12.5px] text-[#60f2bd]">
+                <span v-if="savedNote" role="status" aria-live="polite" class="text-[12.5px] text-neutral-600">
                   ✓ {{ savedNote }}
                 </span>
-                <span v-if="saveError" role="alert" aria-live="assertive" class="text-[12.5px] text-[#f87171]">
+                <span v-if="saveError" role="alert" aria-live="assertive" class="text-[12.5px] text-red-600">
                   {{ saveError }}
                 </span>
               </div>
@@ -210,8 +209,8 @@ function snippetOf(md: string, max = 56): string {
           </div>
 
           <!-- 说明 -->
-          <div class="card-glass mt-4 p-4 text-[12px] leading-relaxed text-[rgba(245,249,254,0.45)]">
-            <div class="mb-1 font-medium text-[rgba(245,249,254,0.7)]">说明</div>
+          <div class="card-glass mt-4 p-4 text-[12px] leading-relaxed text-neutral-500">
+            <div class="mb-1 font-medium text-neutral-700">说明</div>
             当前提炼为本地启发式（截取要点 + 合并摘要）。配置 AI 并接入后端后，将升级为真实模型提炼，生成更贴合简历的亮点表述。
           </div>
         </section>

@@ -143,10 +143,10 @@ const timeline = computed(() => {
 })
 
 const KIND_STYLE: Record<string, string> = {
-  experience: 'border-[rgba(56,189,248,0.3)] bg-[rgba(56,189,248,0.08)] text-[#38bdf8]',
-  education: 'border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.08)] text-[#a78bfa]',
-  milestone: 'border-[rgba(50,240,140,0.3)] bg-[rgba(50,240,140,0.08)] text-[#32f08c]',
-  project: 'border-[rgba(96,242,189,0.3)] bg-[rgba(96,242,189,0.08)] text-[#60f2bd]',
+  experience: 'border-neutral-300 bg-neutral-100 text-neutral-600',
+  education: 'border-neutral-300 bg-neutral-100 text-neutral-700',
+  milestone: 'border-neutral-300 bg-neutral-100 text-neutral-900',
+  project: 'border-neutral-300 bg-neutral-100 text-neutral-600',
 }
 const KIND_LABEL: Record<string, string> = {
   experience: '经历',
@@ -177,8 +177,6 @@ const isEmptyArchive = computed(() => store.isEmpty)
 
 <template>
   <div class="relative min-h-full">
-    <!-- 顶部氛围光（随内容滚动） -->
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-5xl px-6 pb-16">
       <!-- ═══════ 基础信息 ═══════ -->
@@ -187,11 +185,11 @@ const isEmptyArchive = computed(() => store.isEmpty)
         :title="store.profile.full_name || '未命名档案'"
         :desc="store.profile.headline || '还没有头衔 —— 先写一条记录开始吧'"
       >
-        <div class="flex items-center gap-3 text-xs text-[rgba(245,249,254,0.45)]">
+        <div class="flex items-center gap-3 text-xs text-neutral-500">
           <span class="font-mono">{{ store.careerCard.tagCloud.length }}</span> 个标签
-          <span class="text-[rgba(255,255,255,0.12)]">|</span>
+          <span class="text-neutral-300">|</span>
           <span class="font-mono">{{ store.careerCard.timeline.length }}</span> 条时间线
-          <span class="text-[rgba(255,255,255,0.12)]">|</span>
+          <span class="text-neutral-300">|</span>
           <span class="font-mono">{{ store.careerCard.materialCount }}</span> 条素材
         </div>
       </PageHeader>
@@ -199,7 +197,7 @@ const isEmptyArchive = computed(() => store.isEmpty)
         <div class="card-glass mt-6 p-5">
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.45)]">姓名</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">姓名</span>
               <input
                 v-model="store.profile.full_name"
                 class="input-trae"
@@ -208,7 +206,7 @@ const isEmptyArchive = computed(() => store.isEmpty)
               />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.45)]">头衔</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">头衔</span>
               <input
                 v-model="store.profile.headline"
                 class="input-trae"
@@ -217,7 +215,7 @@ const isEmptyArchive = computed(() => store.isEmpty)
               />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.45)]">邮箱</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">邮箱</span>
               <input
                 v-model="store.profile.email"
                 class="input-trae"
@@ -226,7 +224,7 @@ const isEmptyArchive = computed(() => store.isEmpty)
               />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.45)]">电话</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">电话</span>
               <input
                 v-model="store.profile.phone"
                 class="input-trae"
@@ -235,7 +233,7 @@ const isEmptyArchive = computed(() => store.isEmpty)
               />
             </label>
             <label class="block md:col-span-2">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.45)]">个人简介</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">个人简介</span>
               <textarea
                 v-model="store.profile.summary"
                 class="input-trae h-24 resize-none py-3"
@@ -249,8 +247,8 @@ const isEmptyArchive = computed(() => store.isEmpty)
       <!-- ═══════ 日记 / 成就 / 里程碑 录入（A1）═══════ -->
       <section class="mt-2">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 class="heading-tight text-[16px] tracking-wide text-[#f5f9fe]">随手记录</h2>
-          <span class="text-xs text-[rgba(245,249,254,0.35)]">原子化记录 · 可编辑 · AI 提炼的原料</span>
+          <h2 class="heading-tight text-[16px] tracking-wide text-neutral-900">随手记录</h2>
+          <span class="text-xs text-neutral-400">原子化记录 · 可编辑 · AI 提炼的原料</span>
         </div>
 
         <div class="card-glass p-5">
@@ -262,8 +260,8 @@ const isEmptyArchive = computed(() => store.isEmpty)
               class="rounded-full border px-3.5 py-1.5 text-[13px] transition-colors"
               :class="
                 entryType === type
-                  ? 'border-[rgba(50,240,140,0.6)] bg-[rgba(50,240,140,0.12)] text-[#32f08c]'
-                  : 'border-[rgba(255,255,255,0.1)] bg-[rgba(237,239,242,0.05)] text-[rgba(245,249,254,0.6)] hover:text-[#f5f9fe]'
+                  ? 'border-neutral-900 bg-neutral-100 text-neutral-900'
+                  : 'border-neutral-300 bg-neutral-50 text-neutral-600 hover:text-neutral-900'
               "
               @click="entryType = type as JournalEntryType"
             >
@@ -307,17 +305,17 @@ const isEmptyArchive = computed(() => store.isEmpty)
 
         <!-- 池子筛选 / 管理 -->
         <div class="mt-4 flex flex-wrap items-center gap-1.5">
-          <span class="text-[11px] text-[rgba(245,249,254,0.35)]">池子：</span>
+          <span class="text-[11px] text-neutral-400">池子：</span>
           <button
             class="rounded-full border px-2.5 py-0.5 text-[11px] transition-colors"
-            :class="poolFilter === 'all' ? 'border-[rgba(50,240,140,0.5)] bg-[rgba(50,240,140,0.12)] text-[#32f08c]' : 'border-[rgba(255,255,255,0.1)] text-[rgba(245,249,254,0.55)] hover:text-[#f5f9fe]'"
+            :class="poolFilter === 'all' ? 'border-neutral-900 bg-neutral-100 text-neutral-900' : 'border-neutral-300 text-neutral-500 hover:text-neutral-900'"
             @click="poolFilter = 'all'"
           >
             全部
           </button>
           <button
             class="rounded-full border px-2.5 py-0.5 text-[11px] transition-colors"
-            :class="poolFilter === 'none' ? 'border-[rgba(50,240,140,0.5)] bg-[rgba(50,240,140,0.12)] text-[#32f08c]' : 'border-[rgba(255,255,255,0.1)] text-[rgba(245,249,254,0.55)] hover:text-[#f5f9fe]'"
+            :class="poolFilter === 'none' ? 'border-neutral-900 bg-neutral-100 text-neutral-900' : 'border-neutral-300 text-neutral-500 hover:text-neutral-900'"
             @click="poolFilter = 'none'"
           >
             未分类
@@ -326,13 +324,13 @@ const isEmptyArchive = computed(() => store.isEmpty)
             v-for="c in poolStore.collections"
             :key="c.id"
             class="rounded-full border px-2.5 py-0.5 text-[11px] transition-colors"
-            :class="poolFilter === c.id ? 'border-[rgba(50,240,140,0.5)] bg-[rgba(50,240,140,0.12)] text-[#32f08c]' : 'border-[rgba(255,255,255,0.1)] text-[rgba(245,249,254,0.55)] hover:text-[#f5f9fe]'"
+            :class="poolFilter === c.id ? 'border-neutral-900 bg-neutral-100 text-neutral-900' : 'border-neutral-300 text-neutral-500 hover:text-neutral-900'"
             @click="poolFilter = c.id"
           >
             {{ c.name }}
           </button>
           <button
-            class="ml-auto rounded-full border border-[rgba(50,240,140,0.35)] bg-[rgba(50,240,140,0.06)] px-3 py-0.5 text-[11.5px] font-medium text-[#32f08c]"
+            class="ml-auto rounded-full border border-neutral-400 bg-neutral-50 px-3 py-0.5 text-[11.5px] font-medium text-neutral-900"
             @click="showPools = true"
           >
             ⚙ 管理池子
@@ -353,10 +351,10 @@ const isEmptyArchive = computed(() => store.isEmpty)
                     class="rounded-full border px-2 py-0.5 text-[11px]"
                     :class="
                       entry.entry_type === 'achievement'
-                        ? 'border-[rgba(50,240,140,0.35)] bg-[rgba(50,240,140,0.08)] text-[#32f08c]'
+                        ? 'border-neutral-400 bg-neutral-100 text-neutral-900'
                         : entry.entry_type === 'milestone'
-                          ? 'border-[rgba(139,92,246,0.35)] bg-[rgba(139,92,246,0.08)] text-[#a78bfa]'
-                          : 'border-[rgba(56,189,248,0.35)] bg-[rgba(56,189,248,0.08)] text-[#38bdf8]'
+                          ? 'border-neutral-400 bg-neutral-100 text-neutral-700'
+                          : 'border-neutral-400 bg-neutral-100 text-neutral-600'
                     "
                   >
                     {{ TYPE_META[entry.entry_type]?.label ?? '记录' }}
@@ -364,18 +362,18 @@ const isEmptyArchive = computed(() => store.isEmpty)
                   <!-- 池子徽章 -->
                   <span
                     v-if="entry.collection_id"
-                    class="rounded-full border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.06)] px-2 py-0.5 text-[10.5px]"
+                    class="rounded-full border border-neutral-300 bg-neutral-50 px-2 py-0.5 text-[10.5px]"
                     :class="poolStore.colorOf(entry.collection_id)"
                   >
                     ▣ {{ poolStore.nameOf(entry.collection_id) }}
                   </span>
-                  <span class="heading-tight text-[14.5px] text-[#f5f9fe]">{{ entry.title }}</span>
-                  <span class="font-mono text-[11px] text-[rgba(245,249,254,0.35)]">
+                  <span class="heading-tight text-[14.5px] text-neutral-900">{{ entry.title }}</span>
+                  <span class="font-mono text-[11px] text-neutral-400">
                     {{ fmtDate(entry.occurred_at) }}
                   </span>
                 </div>
                 <p
-                  class="mt-1.5 whitespace-pre-wrap text-[13px] leading-relaxed text-[rgba(245,249,254,0.6)]"
+                  class="mt-1.5 whitespace-pre-wrap text-[13px] leading-relaxed text-neutral-600"
                 >
                   {{ entry.content_md }}
                 </p>
@@ -383,7 +381,7 @@ const isEmptyArchive = computed(() => store.isEmpty)
                   <span
                     v-for="tag in entry.tags"
                     :key="tag"
-                    class="rounded-md bg-[rgba(50,240,140,0.08)] px-2 py-0.5 text-[11px] text-[#60f2bd]"
+                    class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600"
                   >
                     #{{ tag }}
                   </span>
@@ -391,14 +389,14 @@ const isEmptyArchive = computed(() => store.isEmpty)
               </div>
               <div class="flex shrink-0 flex-col items-end gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                 <button
-                  class="rounded-lg border border-[rgba(255,255,255,0.08)] px-2.5 py-1 text-xs text-[rgba(245,249,254,0.5)] hover:border-[rgba(50,240,140,0.4)] hover:text-[#32f08c]"
+                  class="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs text-neutral-500 hover:border-neutral-900 hover:text-neutral-900"
                   title="编辑这条记录"
                   @click="startEdit(entry)"
                 >
                   编辑
                 </button>
                 <button
-                  class="rounded-lg border border-[rgba(255,255,255,0.08)] px-2.5 py-1 text-xs text-[rgba(245,249,254,0.4)] hover:border-[rgba(248,113,113,0.4)] hover:text-[#f87171]"
+                  class="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs text-neutral-400 hover:border-red-400 hover:text-red-600"
                   title="删除这条记录"
                   @click="store.removeJournalEntry(entry.id)"
                 >
@@ -413,7 +411,7 @@ const isEmptyArchive = computed(() => store.isEmpty)
             class="card-glass flex flex-col items-center justify-center p-10 text-center"
           >
             <div class="text-3xl opacity-60">📝</div>
-            <p class="mt-3 text-sm text-[rgba(245,249,254,0.55)]">
+            <p class="mt-3 text-sm text-neutral-500">
               {{ store.profile.journal.length === 0 ? '还没有任何记录 —— 从今天的工作、学习、成就开始积累' : '当前池子没有记录' }}
             </p>
           </div>
@@ -423,20 +421,20 @@ const isEmptyArchive = computed(() => store.isEmpty)
       <!-- ═══════ 聚合名片（A2）═══════ -->
       <section class="mt-10">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="heading-tight text-[16px] tracking-wide text-[#f5f9fe]">聚合名片</h2>
-          <span class="text-xs text-[rgba(245,249,254,0.35)]">由档案实时生成 · 名片页同源</span>
+          <h2 class="heading-tight text-[16px] tracking-wide text-neutral-900">聚合名片</h2>
+          <span class="text-xs text-neutral-400">由档案实时生成 · 名片页同源</span>
         </div>
 
         <!-- 技能 -->
         <div v-if="store.profile.skills.length" class="card-glass mb-4 p-5">
-          <div class="mb-3 text-[13px] font-semibold text-[#f5f9fe]">技能</div>
+          <div class="mb-3 text-[13px] font-semibold text-neutral-900">技能</div>
           <div class="flex flex-wrap gap-x-6 gap-y-3">
             <div v-for="skill in store.profile.skills" :key="skill.id" class="min-w-[130px]">
               <div class="flex items-center justify-between text-[13px]">
-                <span class="text-[rgba(245,249,254,0.85)]">{{ skill.name }}</span>
+                <span class="text-neutral-800">{{ skill.name }}</span>
                 <span
                   v-if="skill.category"
-                  class="ml-2 rounded px-1.5 py-0.5 text-[10px] text-[rgba(245,249,254,0.4)]"
+                  class="ml-2 rounded px-1.5 py-0.5 text-[10px] text-neutral-400"
                 >
                   {{ skill.category }}
                 </span>
@@ -446,7 +444,7 @@ const isEmptyArchive = computed(() => store.isEmpty)
                   v-for="(on, i) in levelBars(skill.level)"
                   :key="i"
                   class="h-1 w-5 rounded-full"
-                  :class="on ? 'bg-[#32f08c]' : 'bg-[rgba(255,255,255,0.12)]'"
+                  :class="on ? 'bg-neutral-900' : 'bg-neutral-300'"
                 />
               </div>
             </div>
@@ -455,12 +453,12 @@ const isEmptyArchive = computed(() => store.isEmpty)
 
         <!-- 标签云 -->
         <div v-if="store.careerCard.tagCloud.length" class="card-glass mb-4 p-5">
-          <div class="mb-3 text-[13px] font-semibold text-[#f5f9fe]">标签云</div>
+          <div class="mb-3 text-[13px] font-semibold text-neutral-900">标签云</div>
           <div class="flex flex-wrap gap-2">
             <span
               v-for="t in store.careerCard.tagCloud"
               :key="t.name"
-              class="rounded-full border border-[rgba(50,240,140,0.2)] bg-[rgba(50,240,140,0.05)] px-3 py-1 text-[12px] text-[#60f2bd]"
+              class="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-[12px] text-neutral-600"
             >
               #{{ t.name }}
               <span class="ml-1 font-mono text-[10px] opacity-60">{{ t.count }}</span>
@@ -471,36 +469,36 @@ const isEmptyArchive = computed(() => store.isEmpty)
         <!-- 经历 / 教育 / 项目 -->
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div v-if="store.profile.experiences.length" class="card-glass p-5">
-            <div class="mb-3 text-[13px] font-semibold text-[#f5f9fe]">经历</div>
+            <div class="mb-3 text-[13px] font-semibold text-neutral-900">经历</div>
             <div v-for="exp in store.profile.experiences" :key="exp.id" class="mb-4 last:mb-0">
-              <div class="text-[13.5px] font-medium text-[#f5f9fe]">{{ exp.role }}</div>
-              <div class="text-[12px] text-[rgba(245,249,254,0.45)]">
+              <div class="text-[13.5px] font-medium text-neutral-900">{{ exp.role }}</div>
+              <div class="text-[12px] text-neutral-500">
                 {{ exp.company }} · {{ fmtDate(exp.start_date ?? '') }}{{ exp.end_date ? ` — ${fmtDate(exp.end_date)}` : ' — 至今' }}
               </div>
-              <p class="mt-1 text-[12.5px] leading-relaxed text-[rgba(245,249,254,0.55)]">
+              <p class="mt-1 text-[12.5px] leading-relaxed text-neutral-500">
                 {{ exp.description_md }}
               </p>
             </div>
           </div>
 
           <div v-if="store.profile.education.length" class="card-glass p-5">
-            <div class="mb-3 text-[13px] font-semibold text-[#f5f9fe]">教育</div>
+            <div class="mb-3 text-[13px] font-semibold text-neutral-900">教育</div>
             <div v-for="edu in store.profile.education" :key="edu.id" class="mb-4 last:mb-0">
-              <div class="text-[13.5px] font-medium text-[#f5f9fe]">{{ edu.school }}</div>
-              <div class="text-[12px] text-[rgba(245,249,254,0.45)]">
+              <div class="text-[13.5px] font-medium text-neutral-900">{{ edu.school }}</div>
+              <div class="text-[12px] text-neutral-500">
                 {{ [edu.degree, edu.major].filter(Boolean).join(' · ') }}
               </div>
-              <p v-if="edu.description" class="mt-1 text-[12.5px] text-[rgba(245,249,254,0.55)]">
+              <p v-if="edu.description" class="mt-1 text-[12.5px] text-neutral-500">
                 {{ edu.description }}
               </p>
             </div>
           </div>
 
           <div v-if="store.profile.projects.length" class="card-glass p-5">
-            <div class="mb-3 text-[13px] font-semibold text-[#f5f9fe]">项目</div>
+            <div class="mb-3 text-[13px] font-semibold text-neutral-900">项目</div>
             <div v-for="proj in store.profile.projects" :key="proj.id" class="mb-4 last:mb-0">
-              <div class="text-[13.5px] font-medium text-[#f5f9fe]">{{ proj.name }}</div>
-              <p class="mt-1 text-[12.5px] leading-relaxed text-[rgba(245,249,254,0.55)]">
+              <div class="text-[13.5px] font-medium text-neutral-900">{{ proj.name }}</div>
+              <p class="mt-1 text-[12.5px] leading-relaxed text-neutral-500">
                 {{ proj.description_md }}
               </p>
             </div>
@@ -510,7 +508,7 @@ const isEmptyArchive = computed(() => store.isEmpty)
         <!-- 生涯时间线（A4） -->
         <div class="card-glass mt-4 p-5">
           <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div class="text-[13px] font-semibold text-[#f5f9fe]">生涯时间线</div>
+            <div class="text-[13px] font-semibold text-neutral-900">生涯时间线</div>
             <div class="flex flex-wrap gap-1.5">
               <button
                 v-for="kind in ['all', 'experience', 'education', 'milestone', 'project']"
@@ -518,8 +516,8 @@ const isEmptyArchive = computed(() => store.isEmpty)
                 class="rounded-full border px-2.5 py-1 text-[11.5px] transition-colors"
                 :class="
                   activeKind === kind
-                    ? 'border-[rgba(50,240,140,0.6)] bg-[rgba(50,240,140,0.12)] text-[#32f08c]'
-                    : 'border-[rgba(255,255,255,0.1)] text-[rgba(245,249,254,0.5)] hover:text-[#f5f9fe]'
+                    ? 'border-neutral-900 bg-neutral-100 text-neutral-900'
+                    : 'border-neutral-300 text-neutral-500 hover:text-neutral-900'
                 "
                 @click="activeKind = kind as typeof activeKind"
               >
@@ -528,18 +526,18 @@ const isEmptyArchive = computed(() => store.isEmpty)
             </div>
           </div>
 
-          <div class="relative space-y-0 border-l border-[rgba(50,240,140,0.2)] pl-6">
+          <div class="relative space-y-0 border-l border-neutral-200 pl-6">
             <div v-for="(item, i) in timeline" :key="`${item.kind}-${item.date}-${item.title}-${i}`" class="relative pb-6 last:pb-0">
               <span
-                class="absolute -left-[31px] top-1 h-2.5 w-2.5 rounded-full border-2 border-[#0a0b0d]"
+                class="absolute -left-[31px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white"
                 :class="
                   item.kind === 'experience'
-                    ? 'bg-[#38bdf8]'
+                    ? 'bg-neutral-400'
                     : item.kind === 'education'
-                      ? 'bg-[#a78bfa]'
+                      ? 'bg-neutral-400'
                       : item.kind === 'milestone'
-                        ? 'bg-[#32f08c]'
-                        : 'bg-[#60f2bd]'
+                        ? 'bg-neutral-900'
+                        : 'bg-neutral-400'
                 "
               />
               <div class="flex flex-wrap items-center gap-2">
@@ -549,22 +547,22 @@ const isEmptyArchive = computed(() => store.isEmpty)
                 >
                   {{ KIND_LABEL[item.kind] ?? item.kind }}
                 </span>
-                <span class="heading-tight text-[13.5px] text-[#f5f9fe]">{{ item.title }}</span>
-                <span v-if="item.subtitle" class="text-[12px] text-[rgba(245,249,254,0.4)]">
+                <span class="heading-tight text-[13.5px] text-neutral-900">{{ item.title }}</span>
+                <span v-if="item.subtitle" class="text-[12px] text-neutral-400">
                   {{ item.subtitle }}
                 </span>
-                <span class="ml-auto font-mono text-[11px] text-[rgba(245,249,254,0.35)]">
+                <span class="ml-auto font-mono text-[11px] text-neutral-400">
                   {{ fmtDate(item.date) }}
                 </span>
               </div>
-              <p v-if="item.snippet" class="mt-1 text-[12.5px] leading-relaxed text-[rgba(245,249,254,0.55)]">
+              <p v-if="item.snippet" class="mt-1 text-[12.5px] leading-relaxed text-neutral-500">
                 {{ item.snippet }}
               </p>
             </div>
 
             <div
               v-if="timeline.length === 0"
-              class="border-l-0 py-6 text-center text-sm text-[rgba(245,249,254,0.4)]"
+              class="border-l-0 py-6 text-center text-sm text-neutral-400"
             >
               该类型下暂无条目
             </div>
@@ -574,7 +572,6 @@ const isEmptyArchive = computed(() => store.isEmpty)
 
       <!-- 底部操作 -->
       <div class="mt-8 flex justify-end gap-3">
-        <SecondaryButton @click="store.resetToDemo()">重置为示例数据</SecondaryButton>
         <SecondaryButton @click="store.resetEmpty()">清空档案</SecondaryButton>
       </div>
     </div>
@@ -582,7 +579,7 @@ const isEmptyArchive = computed(() => store.isEmpty)
     <!-- 池子管理 -->
     <Modal v-if="showPools" title="管理池子" max-width="max-w-md" @close="showPools = false">
       <div class="space-y-4">
-        <p class="text-[12px] leading-relaxed text-[rgba(245,249,254,0.45)]">
+        <p class="text-[12px] leading-relaxed text-neutral-500">
           池子把原子笔记归类存放，如「项目实习」「学校经历」「技术栈」。录入记录时可选择归属，也可在列表筛选。
         </p>
 
@@ -602,27 +599,27 @@ const isEmptyArchive = computed(() => store.isEmpty)
           <div
             v-for="c in poolStore.collections"
             :key="c.id"
-            class="flex items-center justify-between rounded-lg border border-[rgba(255,255,255,0.07)] bg-[rgba(237,239,242,0.03)] px-3 py-2"
+            class="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2"
           >
             <span class="text-[13px] font-medium" :class="c.color">{{ c.name }}</span>
             <div class="flex items-center gap-2">
-              <span class="font-mono text-[10.5px] text-[rgba(245,249,254,0.3)]">
+              <span class="font-mono text-[10.5px] text-neutral-400">
                 {{ store.profile.journal.filter((e) => e.collection_id === c.id).length }} 条
               </span>
-              <button class="text-[11.5px] text-[rgba(245,249,254,0.4)] hover:text-[#32f08c]" @click="renamePool(c.id)">
+              <button class="text-[11.5px] text-neutral-400 hover:text-neutral-900" @click="renamePool(c.id)">
                 重命名
               </button>
-              <button class="text-[11.5px] text-[rgba(245,249,254,0.4)] hover:text-[#f87171]" @click="removePool(c.id)">
+              <button class="text-[11.5px] text-neutral-400 hover:text-red-600" @click="removePool(c.id)">
                 删除
               </button>
             </div>
           </div>
-          <div v-if="!poolStore.collections.length" class="py-4 text-center text-[12px] text-[rgba(245,249,254,0.3)]">
+          <div v-if="!poolStore.collections.length" class="py-4 text-center text-[12px] text-neutral-400">
             还没有池子，上方新建一个
           </div>
         </div>
 
-        <div v-if="poolError" class="text-[12px] text-[#f87171]">{{ poolError }}</div>
+        <div v-if="poolError" class="text-[12px] text-red-600">{{ poolError }}</div>
       </div>
     </Modal>
   </div>

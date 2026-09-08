@@ -4,10 +4,10 @@ import { ref } from 'vue'
 
 const STORAGE_KEY = 'pa-theme'
 const SIDEBAR_KEY = 'pa-sidebar-collapsed'
-const DEFAULT_THEME: ThemeName = 'trae'
+const DEFAULT_THEME: ThemeName = 'classic'
 
 /**
- * 前端 UI 状态：主题应用（当前仅 Trae 默认风，预留多主题扩展）+ 侧栏折叠。
+ * 前端 UI 状态：主题应用（当前仅 Classic Mono 经典黑白风，预留多主题扩展）+ 侧栏折叠。
  * 将来新增主题只扩展 ThemeName 联合类型 + style.css 中对应变量层。
  */
 export const useUiStore = defineStore('ui', () => {
@@ -16,7 +16,7 @@ export const useUiStore = defineStore('ui', () => {
 
   function loadTheme(): ThemeName {
     const saved = localStorage.getItem(STORAGE_KEY) as ThemeName | null
-    return saved === 'trae' ? saved : DEFAULT_THEME
+    return saved === 'classic' ? saved : DEFAULT_THEME
   }
 
   function applyTheme(name: ThemeName = theme.value): void {
@@ -25,7 +25,7 @@ export const useUiStore = defineStore('ui', () => {
     localStorage.setItem(STORAGE_KEY, name)
   }
 
-  /** 切换侧栏折叠（220px ↔ 72px 图标模式），持久化 */
+  /** 切换侧栏折叠（200px ↔ 72px 图标模式），持久化 */
   function toggleSidebar(): void {
     sidebarCollapsed.value = !sidebarCollapsed.value
     localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed.value ? '1' : '0')

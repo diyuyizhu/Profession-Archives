@@ -10,19 +10,6 @@ import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import PageHeader from '@/components/PageHeader.vue'
 import PrimaryButton from '@/components/PrimaryButton.vue'
 import SecondaryButton from '@/components/SecondaryButton.vue'
-import { useApplicationStore } from '@/stores/application'
-import { useInterviewStore } from '@/stores/interview'
-import { useLearningStore } from '@/stores/learning'
-import { useProfileStore } from '@/stores/profile'
-import { useQuestionBankStore } from '@/stores/questionBank'
-import { useSkillTrackStore } from '@/stores/skillTrack'
-
-const profileStore = useProfileStore()
-const appStore = useApplicationStore()
-const interviewStore = useInterviewStore()
-const questionBank = useQuestionBankStore()
-const learningStore = useLearningStore()
-const skillTrack = useSkillTrackStore()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const flash = ref<{ kind: 'ok' | 'error'; text: string } | null>(null)
@@ -148,17 +135,6 @@ function onPickFile(e: Event): void {
   input.value = ''
 }
 
-function resetToDemo(): void {
-  if (!window.confirm('重置为演示数据？当前档案/投递/面试/计划/技能数据将被替换（AI 配置保留）。')) return
-  profileStore.resetToDemo()
-  appStore.resetToDemo()
-  interviewStore.clearAll()
-  questionBank.clearAll()
-  learningStore.clearAll()
-  skillTrack.clearAll()
-  notify('ok', '已重置为演示数据')
-}
-
 function clearAllData(): void {
   if (!window.confirm('清空全部本地数据？此操作不可撤销，请先导出备份。')) return
   for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -182,7 +158,6 @@ function formatBytes(n: number): string {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-2xl px-6 pb-16">
       <PageHeader code="—" title="数据管理" desc="导出 · 导入 · 重置，数据归你所有" />
@@ -193,34 +168,34 @@ function formatBytes(n: number): string {
         role="status"
         aria-live="polite"
         class="card-glass fixed left-1/2 top-20 z-50 -translate-x-1/2 px-5 py-3 text-[13px]"
-        :class="flash.kind === 'ok' ? 'text-[#60f2bd]' : 'text-[#f87171]'"
+        :class="flash.kind === 'ok' ? 'text-neutral-600' : 'text-red-600'"
       >
         {{ flash.kind === 'ok' ? '✓' : '✕' }} {{ flash.text }}
       </div>
 
       <!-- 存储概况 -->
-      <section class="card-glass mb-5 flex items-center justify-between gap-4 p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+      <section class="card-glass mb-5 flex items-center justify-between gap-4 p-5">
         <div>
-          <div class="text-[13.5px] font-semibold text-[#f5f9fe]">本地存储</div>
-          <div class="mt-0.5 text-[11.5px] text-[rgba(245,249,254,0.45)]">
+          <div class="text-[13.5px] font-semibold text-neutral-900">本地存储</div>
+          <div class="mt-0.5 text-[11.5px] text-neutral-500">
             全部数据保存在本机浏览器 / 应用本地 · 无云端
           </div>
         </div>
-        <span class="font-mono text-[13px] text-[#32f08c]">{{ formatBytes(storageUsed) }}</span>
+        <span class="font-mono text-[13px] text-neutral-900">{{ formatBytes(storageUsed) }}</span>
       </section>
 
       <!-- 导出 / 导入 -->
-      <section class="card-glass grid grid-cols-1 gap-4 p-5 sm:grid-cols-2" style="backdrop-filter: blur(28px) saturate(1.6)">
-        <div class="rounded-lg border border-[rgba(255,255,255,0.08)] p-4">
-          <div class="text-[13.5px] font-semibold text-[#f5f9fe]">导出备份</div>
-          <p class="mt-1 text-[11.5px] leading-relaxed text-[rgba(245,249,254,0.45)]">
+      <section class="card-glass grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+        <div class="rounded-lg border border-neutral-200 p-4">
+          <div class="text-[13.5px] font-semibold text-neutral-900">导出备份</div>
+          <p class="mt-1 text-[11.5px] leading-relaxed text-neutral-500">
             档案、投递、面试、题库、计划、技能一键打包为 JSON
           </p>
           <PrimaryButton class="mt-3" @click="exportData">导出全部数据</PrimaryButton>
         </div>
-        <div class="rounded-lg border border-[rgba(255,255,255,0.08)] p-4">
-          <div class="text-[13.5px] font-semibold text-[#f5f9fe]">导入恢复</div>
-          <p class="mt-1 text-[11.5px] leading-relaxed text-[rgba(245,249,254,0.45)]">
+        <div class="rounded-lg border border-neutral-200 p-4">
+          <div class="text-[13.5px] font-semibold text-neutral-900">导入恢复</div>
+          <p class="mt-1 text-[11.5px] leading-relaxed text-neutral-500">
             选择备份文件，覆盖本地数据并刷新
           </p>
           <SecondaryButton class="mt-3" @click="isDesktop ? desktopImport() : fileInput?.click()">选择备份文件</SecondaryButton>
@@ -229,15 +204,14 @@ function formatBytes(n: number): string {
       </section>
 
       <!-- 危险区 -->
-      <section class="card-glass mt-5 border-[rgba(248,113,113,0.2)] p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
-        <div class="mb-1 text-[13.5px] font-semibold text-[#f87171]">危险区</div>
-        <p class="mb-4 text-[11.5px] text-[rgba(245,249,254,0.45)]">
+      <section class="card-glass mt-5 border-red-200 p-5">
+        <div class="mb-1 text-[13.5px] font-semibold text-red-600">危险区</div>
+        <p class="mb-4 text-[11.5px] text-neutral-500">
           以下操作会替换 / 清空数据，请先导出备份。
         </p>
         <div class="flex flex-wrap gap-3">
-          <SecondaryButton @click="resetToDemo">重置为演示数据</SecondaryButton>
           <button
-            class="rounded-lg border border-[rgba(248,113,113,0.4)] bg-[rgba(248,113,113,0.08)] px-5 py-2.5 text-[13px] font-medium text-[#f87171] transition-colors hover:bg-[rgba(248,113,113,0.15)]"
+            class="rounded-lg border border-red-400 bg-red-50 px-5 py-2.5 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-100"
             @click="clearAllData"
           >
             清空全部数据

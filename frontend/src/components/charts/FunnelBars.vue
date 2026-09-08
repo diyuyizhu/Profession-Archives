@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 漏斗条形图（B4 转化 / F1 路线分析共用）：
- * 每行 = 阶段名 + 计数 + 相对最大值的薄荷绿渐变条。零依赖 div 实现。
+ * 每行 = 阶段名 + 计数 + 相对最大值的灰阶条。零依赖 div 实现。
  */
 import { computed } from 'vue'
 
@@ -25,25 +25,25 @@ function pctOf(row: { label: string; count: number }): number {
   <div class="space-y-2">
     <div v-for="(row, i) in rows" :key="row.label" class="flex items-center gap-3">
       <div class="flex w-32 shrink-0 items-center justify-between gap-1 pr-1">
-        <span class="truncate text-[12px] text-[rgba(245,249,254,0.6)]">
-          <span class="mr-1 font-mono text-[10px] text-[rgba(245,249,254,0.3)]">{{ i + 1 }}</span>
+        <span class="truncate text-[12px] text-neutral-600">
+          <span class="mr-1 font-mono text-[10px] text-neutral-400">{{ i + 1 }}</span>
           {{ row.label }}
         </span>
-        <span class="shrink-0 font-mono text-[12px] text-[#f5f9fe]">{{ row.count }}</span>
+        <span class="shrink-0 font-mono text-[12px] text-neutral-900">{{ row.count }}</span>
       </div>
       <div class="flex-1">
         <div
           class="flex h-[26px] items-center justify-end rounded-md border px-2"
           :class="
             row.label === highlightLabel
-              ? 'border-[rgba(251,191,36,0.45)] bg-[rgba(251,191,36,0.1)]'
-              : 'border-[rgba(50,240,140,0.2)] bg-[rgba(50,240,140,0.06)]'
+              ? 'border-neutral-400 bg-neutral-100'
+              : 'border-neutral-200 bg-neutral-50'
           "
           :style="{ width: `${Math.max(6, pctOf(row))}%` }"
         >
           <span
             class="text-[10.5px]"
-            :class="row.label === highlightLabel ? 'text-[#fbbf24]' : 'text-[#60f2bd]'"
+            :class="row.label === highlightLabel ? 'text-neutral-900' : 'text-neutral-600'"
           >
             {{ pctOf(row) }}%
           </span>

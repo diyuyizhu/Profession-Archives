@@ -26,7 +26,7 @@ function isActive(tab: ModuleTab, index: number): boolean {
 
 <template>
   <nav
-    class="mb-6 flex flex-wrap gap-1 rounded-lg border border-[rgba(255,255,255,0.07)] bg-[rgba(18,20,24,0.3)] p-1"
+    class="mb-6 flex flex-wrap gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-1"
     role="tablist"
     aria-label="模块内功能"
   >
@@ -39,8 +39,8 @@ function isActive(tab: ModuleTab, index: number): boolean {
       class="rounded-md px-3.5 py-1.5 text-[12.5px] font-medium transition-colors"
       :class="
         isActive(tab, i)
-          ? 'bg-[rgba(50,240,140,0.12)] text-[#32f08c]'
-          : 'text-[rgba(245,249,254,0.55)] hover:bg-[rgba(237,239,242,0.05)] hover:text-[#f5f9fe]'
+          ? 'bg-neutral-100 text-neutral-900'
+          : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900'
       "
       @click="router.push(tab.path)"
     >

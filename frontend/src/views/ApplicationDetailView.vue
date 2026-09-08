@@ -358,7 +358,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-4xl px-6 pb-16">
       <div v-if="app">
@@ -368,20 +367,20 @@ onBeforeUnmount(() => {
         </PageHeader>
 
         <!-- 状态操作 -->
-        <section class="card-glass flex flex-wrap items-center gap-3 p-4" style="backdrop-filter: blur(28px) saturate(1.6)">
+        <section class="card-glass flex flex-wrap items-center gap-3 p-4">
           <span
             class="rounded-full border px-3 py-1 text-[12.5px]"
             :class="[statusMeta(app.status, app.total_rounds).chip, statusMeta(app.status, app.total_rounds).text]"
           >
             {{ statusMeta(app.status, app.total_rounds).label }}
           </span>
-          <span class="text-[12px] text-[rgba(245,249,254,0.45)]">
+          <span class="text-[12px] text-neutral-500">
             共 {{ app.total_rounds ?? 3 }} 轮
           </span>
           <div class="ml-auto flex flex-wrap items-center gap-2">
             <button
               v-if="canAdvance(app)"
-              class="rounded-lg border border-[rgba(50,240,140,0.4)] bg-[rgba(50,240,140,0.08)] px-3 py-1.5 text-[12px] font-medium text-[#32f08c]"
+              class="rounded-lg border border-neutral-900 bg-neutral-100 px-3 py-1.5 text-[12px] font-medium text-neutral-900"
               @click="onAdvance"
             >
               推进 ▸
@@ -389,7 +388,7 @@ onBeforeUnmount(() => {
             <button
               v-for="target in transitionTargets(app!.status, app!.total_rounds ?? 3).filter((s) => s !== app!.status)"
               :key="target"
-              class="rounded-lg border border-[rgba(255,255,255,0.12)] px-3 py-1.5 text-[12px] text-[rgba(245,249,254,0.6)] hover:border-[rgba(50,240,140,0.4)] hover:text-[#32f08c]"
+              class="rounded-lg border border-neutral-300 px-3 py-1.5 text-[12px] text-neutral-600 hover:border-neutral-900 hover:text-neutral-900"
               @click="onTerminal(target)"
             >
               标记{{ statusMeta(target, app!.total_rounds).label }}
@@ -399,46 +398,46 @@ onBeforeUnmount(() => {
 
         <div class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
           <!-- 基本信息 -->
-          <section class="card-glass p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
-            <div class="mb-3 text-[13px] font-semibold text-[#f5f9fe]">基本信息</div>
+          <section class="card-glass p-5">
+            <div class="mb-3 text-[13px] font-semibold text-neutral-900">基本信息</div>
             <div class="space-y-2 text-[12.5px]">
-              <div class="flex justify-between gap-3"><span class="text-[rgba(245,249,254,0.4)]">渠道</span><span>{{ app.channel || '—' }}</span></div>
-              <div class="flex justify-between gap-3"><span class="text-[rgba(245,249,254,0.4)]">投递方式</span><span>{{ app.apply_method ? APPLY_METHOD_LABELS[app.apply_method] : '—' }}</span></div>
-              <div class="flex justify-between gap-3"><span class="text-[rgba(245,249,254,0.4)]">投递日期</span><span>{{ app.applied_at || '—' }}</span></div>
-              <div class="flex justify-between gap-3"><span class="text-[rgba(245,249,254,0.4)]">重要性</span><span class="text-[#fbbf24]">{{ app.importance ? '★'.repeat(app.importance) : '—' }}</span></div>
-              <div class="flex justify-between gap-3"><span class="text-[rgba(245,249,254,0.4)]">URL</span><a v-if="app.url" :href="app.url" target="_blank" rel="noopener" class="truncate text-[#38bdf8] hover:underline">{{ app.url }}</a><span v-else>—</span></div>
-              <div class="flex justify-between gap-3"><span class="text-[rgba(245,249,254,0.4)]">标签</span><span>{{ app.tags.length ? app.tags.map((t) => '#' + t).join(' ') : '—' }}</span></div>
+              <div class="flex justify-between gap-3"><span class="text-neutral-400">渠道</span><span>{{ app.channel || '—' }}</span></div>
+              <div class="flex justify-between gap-3"><span class="text-neutral-400">投递方式</span><span>{{ app.apply_method ? APPLY_METHOD_LABELS[app.apply_method] : '—' }}</span></div>
+              <div class="flex justify-between gap-3"><span class="text-neutral-400">投递日期</span><span>{{ app.applied_at || '—' }}</span></div>
+              <div class="flex justify-between gap-3"><span class="text-neutral-400">重要性</span><span class="text-neutral-600">{{ app.importance ? '★'.repeat(app.importance) : '—' }}</span></div>
+              <div class="flex justify-between gap-3"><span class="text-neutral-400">URL</span><a v-if="app.url" :href="app.url" target="_blank" rel="noopener" class="truncate text-neutral-600 hover:underline">{{ app.url }}</a><span v-else>—</span></div>
+              <div class="flex justify-between gap-3"><span class="text-neutral-400">标签</span><span>{{ app.tags.length ? app.tags.map((t) => '#' + t).join(' ') : '—' }}</span></div>
             </div>
 
             <!-- JD -->
             <details class="mt-4">
-              <summary class="cursor-pointer text-[12px] font-medium text-[#32f08c]">JD 全文（点击展开）</summary>
-              <pre class="mt-2 whitespace-pre-wrap rounded-lg border border-[rgba(255,255,255,0.07)] bg-[rgba(237,239,242,0.03)] p-3 text-[12px] leading-relaxed text-[rgba(245,249,254,0.6)]">{{ app.jd || '（无）' }}</pre>
+              <summary class="cursor-pointer text-[12px] font-medium text-neutral-900">JD 全文（点击展开）</summary>
+              <pre class="mt-2 whitespace-pre-wrap rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-[12px] leading-relaxed text-neutral-600">{{ app.jd || '（无）' }}</pre>
             </details>
-            <p v-if="app.notes" class="mt-3 rounded-lg border border-[rgba(255,255,255,0.07)] bg-[rgba(237,239,242,0.03)] p-3 text-[12.5px] leading-relaxed text-[rgba(245,249,254,0.6)]">{{ app.notes }}</p>
+            <p v-if="app.notes" class="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-[12.5px] leading-relaxed text-neutral-600">{{ app.notes }}</p>
 
             <!-- 投递方式快捷动作 -->
-            <div v-if="app.apply_method" class="mt-4 flex flex-wrap gap-2 border-t border-[rgba(255,255,255,0.06)] pt-3">
+            <div v-if="app.apply_method" class="mt-4 flex flex-wrap gap-2 border-t border-neutral-200 pt-3">
               <RouterLink
                 :to="{ path: '/tracking/resume', query: { app: app.id } }"
-                class="rounded-lg border border-[rgba(50,240,140,0.3)] bg-[rgba(50,240,140,0.06)] px-3 py-1.5 text-[12px] text-[#32f08c] no-underline hover:bg-[rgba(50,240,140,0.12)]"
+                class="rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-[12px] text-neutral-900 no-underline hover:bg-neutral-100"
               >
                 📄 生成特化简历
               </RouterLink>
-              <RouterLink v-if="app.apply_method === 'official_form'" to="/automation/plugin" class="rounded-lg border border-[rgba(56,189,248,0.3)] bg-[rgba(56,189,248,0.06)] px-3 py-1.5 text-[12px] text-[#38bdf8] no-underline hover:bg-[rgba(56,189,248,0.12)]">
+              <RouterLink v-if="app.apply_method === 'official_form'" to="/automation/plugin" class="rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-[12px] text-neutral-600 no-underline hover:bg-neutral-100">
                 🧩 插件填充
               </RouterLink>
-              <RouterLink v-if="app.apply_method === 'email'" to="/tracking/collect" class="rounded-lg border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.06)] px-3 py-1.5 text-[12px] text-[#a78bfa] no-underline hover:bg-[rgba(139,92,246,0.12)]">
+              <RouterLink v-if="app.apply_method === 'email'" to="/tracking/collect" class="rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-[12px] text-neutral-700 no-underline hover:bg-neutral-100">
                 📧 邮箱导入
               </RouterLink>
             </div>
           </section>
 
           <!-- 邮箱往来 -->
-          <section class="card-glass flex flex-col p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+          <section class="card-glass flex flex-col p-5">
             <div class="mb-2 flex items-center justify-between">
-              <span class="text-[13px] font-semibold text-[#f5f9fe]">邮箱往来（归档）</span>
-              <span v-if="emailSaved" class="text-[11.5px] text-[#60f2bd]">✓ 已保存</span>
+              <span class="text-[13px] font-semibold text-neutral-900">邮箱往来（归档）</span>
+              <span v-if="emailSaved" class="text-[11.5px] text-neutral-600">✓ 已保存</span>
             </div>
             <textarea
               v-model="emailDraft"
@@ -446,7 +445,7 @@ onBeforeUnmount(() => {
               placeholder="粘贴该岗位的邮箱往来内容（约面邀请、回复、通知…）&#10;后续可接入邮箱自动填入"
             />
             <div class="mt-2 flex items-center justify-between">
-              <span v-if="saveError" class="text-[11.5px] text-[#f87171]">{{ saveError }}</span>
+              <span v-if="saveError" class="text-[11.5px] text-red-600">{{ saveError }}</span>
               <span class="flex-1" />
               <SecondaryButton @click="saveEmail">保存邮箱归档</SecondaryButton>
             </div>
@@ -456,59 +455,59 @@ onBeforeUnmount(() => {
         <!-- 关联内容 -->
         <section class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
           <!-- 面试记录 -->
-          <div class="card-glass p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+          <div class="card-glass p-5">
             <div class="mb-3 flex items-center justify-between">
-              <span class="text-[13px] font-semibold text-[#f5f9fe]">面试记录（{{ interviews.length }} 轮）</span>
-              <RouterLink to="/interview" class="text-[12px] text-[#32f08c] no-underline hover:text-[#60f2bd]">去面试记录 →</RouterLink>
+              <span class="text-[13px] font-semibold text-neutral-900">面试记录（{{ interviews.length }} 轮）</span>
+              <RouterLink to="/interview" class="text-[12px] text-neutral-900 no-underline hover:text-neutral-600">去面试记录 →</RouterLink>
             </div>
             <div v-if="interviews.length" class="space-y-2">
-              <div v-for="iv in interviews" :key="iv.id" class="flex items-center justify-between rounded-lg border border-[rgba(255,255,255,0.07)] bg-[rgba(237,239,242,0.03)] px-3 py-2">
-                <span class="text-[12px] text-[rgba(245,249,254,0.7)]">第 {{ iv.round }} 轮 · {{ iv.occurred_at }}</span>
-                <span class="text-[11.5px]" :class="iv.result === 'passed' ? 'text-[#32f08c]' : iv.result === 'failed' ? 'text-[#f87171]' : 'text-[#fbbf24]'">
+              <div v-for="iv in interviews" :key="iv.id" class="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
+                <span class="text-[12px] text-neutral-700">第 {{ iv.round }} 轮 · {{ iv.occurred_at }}</span>
+                <span class="text-[11.5px]" :class="iv.result === 'passed' ? 'text-neutral-900' : iv.result === 'failed' ? 'text-red-600' : 'text-neutral-600'">
                   {{ iv.result === 'passed' ? '通过' : iv.result === 'failed' ? '淘汰' : '待定' }}
                 </span>
               </div>
             </div>
-            <div v-else class="py-4 text-center text-[12px] text-[rgba(245,249,254,0.3)]">还没有面试记录</div>
+            <div v-else class="py-4 text-center text-[12px] text-neutral-400">还没有面试记录</div>
           </div>
 
           <!-- 复盘 -->
-          <div class="card-glass p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+          <div class="card-glass p-5">
             <div class="mb-3 flex items-center justify-between">
-              <span class="text-[13px] font-semibold text-[#f5f9fe]">复盘（{{ reflections.length }} 条）</span>
-              <RouterLink to="/interview/review" class="text-[12px] text-[#32f08c] no-underline hover:text-[#60f2bd]">去 AI 复盘 →</RouterLink>
+              <span class="text-[13px] font-semibold text-neutral-900">复盘（{{ reflections.length }} 条）</span>
+              <RouterLink to="/interview/review" class="text-[12px] text-neutral-900 no-underline hover:text-neutral-600">去 AI 复盘 →</RouterLink>
             </div>
             <div v-if="reflections.length" class="space-y-2">
-              <div v-for="r in reflections" :key="r.id" class="rounded-lg border border-[rgba(255,255,255,0.07)] bg-[rgba(237,239,242,0.03)] px-3 py-2">
+              <div v-for="r in reflections" :key="r.id" class="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] text-[rgba(245,249,254,0.35)]">{{ new Date(r.created_at).toLocaleDateString('zh-CN') }}</span>
-                  <span class="text-[11px] text-[#38bdf8]">{{ r.highlights.length }} 亮点 · {{ r.improvements.length }} 待改进</span>
+                  <span class="text-[11px] text-neutral-400">{{ new Date(r.created_at).toLocaleDateString('zh-CN') }}</span>
+                  <span class="text-[11px] text-neutral-600">{{ r.highlights.length }} 亮点 · {{ r.improvements.length }} 待改进</span>
                 </div>
-                <ul class="mt-1.5 space-y-0.5 text-[12px] text-[rgba(245,249,254,0.6)]">
+                <ul class="mt-1.5 space-y-0.5 text-[12px] text-neutral-600">
                   <li v-for="h in r.improvements.slice(0, 3)" :key="h">· {{ h }}</li>
                 </ul>
               </div>
             </div>
-            <div v-else class="py-4 text-center text-[12px] text-[rgba(245,249,254,0.3)]">还没有复盘</div>
+            <div v-else class="py-4 text-center text-[12px] text-neutral-400">还没有复盘</div>
           </div>
 
           <!-- 沉淀面经 -->
-          <div class="card-glass p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+          <div class="card-glass p-5">
             <div class="mb-3 flex items-center justify-between">
-              <span class="text-[13px] font-semibold text-[#f5f9fe]">沉淀面经（{{ bankItems.length }} 题）</span>
-              <RouterLink to="/interview/question-bank" class="text-[12px] text-[#32f08c] no-underline hover:text-[#60f2bd]">去面经题库 →</RouterLink>
+              <span class="text-[13px] font-semibold text-neutral-900">沉淀面经（{{ bankItems.length }} 题）</span>
+              <RouterLink to="/interview/question-bank" class="text-[12px] text-neutral-900 no-underline hover:text-neutral-600">去面经题库 →</RouterLink>
             </div>
             <div v-if="bankItems.length" class="space-y-1.5">
-              <div v-for="q in bankItems" :key="q.id" class="truncate text-[12px] text-[rgba(245,249,254,0.65)]">▸ {{ q.question }}</div>
+              <div v-for="q in bankItems" :key="q.id" class="truncate text-[12px] text-neutral-600">▸ {{ q.question }}</div>
             </div>
-            <div v-else class="py-4 text-center text-[12px] text-[rgba(245,249,254,0.3)]">面试题目可沉淀到面经题库</div>
+            <div v-else class="py-4 text-center text-[12px] text-neutral-400">面试题目可沉淀到面经题库</div>
           </div>
 
           <!-- 面试准备 + 录制归档 -->
-          <div class="card-glass p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+          <div class="card-glass p-5">
             <div class="mb-3 flex items-center justify-between">
-              <span class="text-[13px] font-semibold text-[#f5f9fe]">面试准备 · 录制归档</span>
-              <button class="text-[11.5px] text-[rgba(245,249,254,0.4)] hover:text-[#32f08c]" @click="showToolManager = true">
+              <span class="text-[13px] font-semibold text-neutral-900">面试准备 · 录制归档</span>
+              <button class="text-[11.5px] text-neutral-400 hover:text-neutral-900" @click="showToolManager = true">
                 ⚙ 管理面试软件
               </button>
             </div>
@@ -524,84 +523,84 @@ onBeforeUnmount(() => {
                 </select>
                 <button
                   v-if="toolsStore.tools.find((t) => t.id === selectedToolId)?.url"
-                  class="text-[12px] text-[#38bdf8] hover:underline"
+                  class="text-[12px] text-neutral-600 hover:underline"
                   @click="openToolUrl(toolsStore.tools.find((t) => t.id === selectedToolId)!.url)"
                 >
                   打开工具 ↗
                 </button>
                 <button
-                  class="rounded-lg border border-[rgba(50,240,140,0.4)] bg-[rgba(50,240,140,0.08)] px-3 py-1.5 text-[12px] font-medium text-[#32f08c]"
+                  class="rounded-lg border border-neutral-900 bg-neutral-100 px-3 py-1.5 text-[12px] font-medium text-neutral-900"
                   @click="startRecording"
                 >
                   ● 开始录屏
                 </button>
               </div>
               <label class="flex cursor-pointer items-center gap-2">
-                <input v-model="recordMic" type="checkbox" class="h-4 w-4 accent-[#32f08c]" />
-                <span class="text-[12px] text-[rgba(245,249,254,0.65)]">同时录制麦克风（与屏幕混音）</span>
+                <input v-model="recordMic" type="checkbox" class="h-4 w-4 accent-neutral-900" />
+                <span class="text-[12px] text-neutral-600">同时录制麦克风（与屏幕混音）</span>
               </label>
-              <div v-if="isDesktop" class="text-[11px] text-[rgba(245,249,254,0.35)]">
-                🖥 桌面版：<b class="text-[#32f08c]">系统级录制</b>（屏幕 + 系统声音），由桌面端 ffmpeg 完成
+              <div v-if="isDesktop" class="text-[11px] text-neutral-400">
+                🖥 桌面版：<b class="text-neutral-900">系统级录制</b>（屏幕 + 系统声音），由桌面端 ffmpeg 完成
               </div>
-              <div v-else class="text-[11px] text-[rgba(245,249,254,0.35)]">
-                网页降级录制：只能录标签页声音 + 麦克风；要录<b class="text-[#fbbf24]">系统声音（对方扬声器）</b>请使用桌面版（Tauri）
+              <div v-else class="text-[11px] text-neutral-400">
+                网页降级录制：只能录标签页声音 + 麦克风；要录<b class="text-neutral-600">系统声音（对方扬声器）</b>请使用桌面版（Tauri）
               </div>
             </div>
 
             <!-- 录制中 -->
-            <div v-else class="rounded-lg border border-[rgba(248,113,113,0.4)] bg-[rgba(248,113,113,0.06)] p-3">
+            <div v-else class="rounded-lg border border-red-400 bg-red-50 p-3">
               <div class="flex flex-wrap items-center justify-between gap-2">
-                <span class="text-[13px] font-medium text-[#f87171]">
+                <span class="text-[13px] font-medium text-red-600">
                   ● 录制中 {{ fmtDuration(recordSeconds) }}
                 </span>
                 <button
-                  class="rounded-lg border border-[rgba(248,113,113,0.5)] bg-[rgba(248,113,113,0.1)] px-3 py-1.5 text-[12px] font-medium text-[#f87171]"
+                  class="rounded-lg border border-red-500 bg-red-100 px-3 py-1.5 text-[12px] font-medium text-red-600"
                   @click="stopRecording"
                 >
                   ■ 停止并归档
                 </button>
               </div>
-              <div class="mt-1.5 text-[11px] text-[rgba(245,249,254,0.4)]">
+              <div class="mt-1.5 text-[11px] text-neutral-400">
                 正在录制屏幕（含系统声音）· 停止后自动下载视频并记录到本档案
               </div>
             </div>
 
-            <div v-if="recordError" class="mt-2 text-[12px] text-[#f87171]">{{ recordError }}</div>
-            <div v-if="recordNote" class="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-[#60f2bd]">
+            <div v-if="recordError" class="mt-2 text-[12px] text-red-600">{{ recordError }}</div>
+            <div v-if="recordNote" class="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-neutral-600">
               ✓ {{ recordNote }}
-              <RouterLink to="/interview/review" class="rounded border border-[rgba(50,240,140,0.4)] bg-[rgba(50,240,140,0.08)] px-2 py-0.5 text-[11.5px] font-medium text-[#32f08c] no-underline hover:bg-[rgba(50,240,140,0.15)]">
+              <RouterLink to="/interview/review" class="rounded border border-neutral-900 bg-neutral-100 px-2 py-0.5 text-[11.5px] font-medium text-neutral-900 no-underline hover:bg-neutral-200">
                 去 AI 复盘 →
               </RouterLink>
             </div>
-            <div v-if="saveError" class="mt-2 text-[12px] text-[#f87171]">{{ saveError }}</div>
+            <div v-if="saveError" class="mt-2 text-[12px] text-red-600">{{ saveError }}</div>
 
             <!-- 归档列表 -->
             <div v-if="archives.length" class="mt-4 space-y-2">
-              <div class="text-[11px] font-medium tracking-widest text-[rgba(245,249,254,0.35)]">
+              <div class="text-[11px] font-medium tracking-widest text-neutral-400">
                 归档（{{ archives.length }}）
               </div>
               <div
                 v-for="a in archives"
                 :key="a.id"
-                class="flex items-center justify-between gap-2 rounded-lg border border-[rgba(255,255,255,0.07)] bg-[rgba(237,239,242,0.03)] px-3 py-2"
+                class="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2"
               >
                 <div class="min-w-0">
-                  <div class="truncate text-[12.5px] text-[rgba(245,249,254,0.75)]">
+                  <div class="truncate text-[12.5px] text-neutral-700">
                     {{ a.kind === 'recording' ? '🎬' : '📎' }} {{ a.title }}
                   </div>
-                  <div class="mt-0.5 flex flex-wrap gap-x-3 text-[10.5px] text-[rgba(245,249,254,0.35)]">
+                  <div class="mt-0.5 flex flex-wrap gap-x-3 text-[10.5px] text-neutral-400">
                     <span v-if="a.file_name" class="truncate">{{ a.file_name }}</span>
                     <span v-if="a.duration">{{ fmtDuration(a.duration) }}</span>
                     <span v-if="a.file_size">{{ fmtSize(a.file_size) }}</span>
                     <span>{{ a.occurred_at }}</span>
                   </div>
                 </div>
-                <button class="shrink-0 text-[11px] text-[rgba(245,249,254,0.35)] hover:text-[#f87171]" @click="removeArchive(a.id)">
+                <button class="shrink-0 text-[11px] text-neutral-400 hover:text-red-600" @click="removeArchive(a.id)">
                   删除
                 </button>
               </div>
             </div>
-            <div v-else class="mt-4 py-2 text-center text-[12px] text-[rgba(245,249,254,0.3)]">
+            <div v-else class="mt-4 py-2 text-center text-[12px] text-neutral-400">
               面试前选好软件 → 开始录屏；录完自动归档到这里（视频文件保存在本地）
             </div>
           </div>
@@ -610,7 +609,7 @@ onBeforeUnmount(() => {
 
       <div v-else class="card-glass mt-10 flex flex-col items-center gap-3 px-5 py-14 text-center">
         <span class="text-3xl">🗂️</span>
-        <div class="text-[14px] text-[rgba(245,249,254,0.6)]">投递不存在或已删除</div>
+        <div class="text-[14px] text-neutral-600">投递不存在或已删除</div>
         <SecondaryButton @click="router.push('/tracking')">返回看板</SecondaryButton>
       </div>
     </div>
@@ -641,7 +640,7 @@ onBeforeUnmount(() => {
             placeholder="打开链接（可选，如会议入口 URL）"
           />
           <button
-            class="rounded-lg border border-[rgba(50,240,140,0.4)] bg-[rgba(50,240,140,0.08)] px-4 py-1.5 text-[12.5px] font-medium text-[#32f08c]"
+            class="rounded-lg border border-neutral-900 bg-neutral-100 px-4 py-1.5 text-[12.5px] font-medium text-neutral-900"
             :disabled="!newToolName.trim()"
             @click="addTool"
           >
@@ -653,17 +652,17 @@ onBeforeUnmount(() => {
           <div
             v-for="t in toolsStore.tools"
             :key="t.id"
-            class="flex items-center justify-between rounded-lg border border-[rgba(255,255,255,0.07)] bg-[rgba(237,239,242,0.03)] px-3 py-2"
+            class="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2"
           >
             <div class="min-w-0">
-              <span class="text-[13px] font-medium text-[#f5f9fe]">{{ t.name }}</span>
-              <span class="ml-2 text-[10.5px] text-[rgba(245,249,254,0.35)]">{{ toolsStore.TOOL_KIND_LABEL[t.kind] }}</span>
+              <span class="text-[13px] font-medium text-neutral-900">{{ t.name }}</span>
+              <span class="ml-2 text-[10.5px] text-neutral-400">{{ toolsStore.TOOL_KIND_LABEL[t.kind] }}</span>
             </div>
-            <button class="shrink-0 text-[11.5px] text-[rgba(245,249,254,0.4)] hover:text-[#f87171]" @click="toolsStore.removeTool(t.id)">
+            <button class="shrink-0 text-[11.5px] text-neutral-400 hover:text-red-600" @click="toolsStore.removeTool(t.id)">
               删除
             </button>
           </div>
-          <div v-if="!toolsStore.tools.length" class="py-3 text-center text-[12px] text-[rgba(245,249,254,0.3)]">
+          <div v-if="!toolsStore.tools.length" class="py-3 text-center text-[12px] text-neutral-400">
             还没有面试软件，上方添加
           </div>
         </div>

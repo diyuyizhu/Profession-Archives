@@ -23,7 +23,6 @@ import { localToday } from '@pa/shared/utils'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { buildDemoApplications, buildDemoEvents } from '@/data/applications'
 import { uid } from '@/data/seed'
 
 const APPS_KEY = 'pa-applications-v1'
@@ -70,6 +69,7 @@ function sanitizeApplications(list: unknown): Application[] {
       channel: typeof a.channel === 'string' ? a.channel : undefined,
       status: a.status as ApplicationStatus,
       tags: Array.isArray(a.tags) ? a.tags.filter((t): t is string => typeof t === 'string') : [],
+      groups: Array.isArray(a.groups) ? a.groups.filter((g): g is string => typeof g === 'string') : [],
       notes: typeof a.notes === 'string' ? a.notes : '',
       total_rounds:
         typeof a.total_rounds === 'number'
@@ -128,9 +128,7 @@ export function transitionTargets(
 }
 
 export const useApplicationStore = defineStore('application', () => {
-  // 首次运行（无投递数据）：投递与事件用同一份 demo 引用，
-  // 保证漏斗"曾经到达"精确；非首次则读存储并经结构校验。
-  // 首次启动不预置示例投递：空看板开始（演示数据仅"重置为演示"时生成）
+  // 首次运行（无投递数据）：空看板开始；非首次则读存储并经结构校验。
   const storedApps = load<Application[]>(APPS_KEY)
   const storedEvents = load<ApplicationEvent[]>(EVENTS_KEY)
   const firstRun = storedApps === null
@@ -138,7 +136,7 @@ export const useApplicationStore = defineStore('application', () => {
   const applications = ref<Application[]>(sanitizeApplications(storedApps ?? []))
   const events = ref<ApplicationEvent[]>(storedEvents ? sanitizeEvents(storedEvents) : [])
 
-  // 实时反映：一旦有了投递即视为自定义数据（避免首次加载后仍报 demo）
+  // 实时反映：一旦有了投递即视为自定义数据
   const hasCustomData = computed(() => !firstRun || applications.value.length > 0)
 
   const board = computed<ApplicationBoard>(() => groupByStatus(applications.value))
@@ -231,18 +229,34 @@ export const useApplicationStore = defineStore('application', () => {
     return transition(id, next)
   }
 
-  /** 批量重置为 demo 数据 */
-  function resetToDemo(): void {
-    applications.value = buildDemoApplications()
-    events.value = buildDemoEvents(applications.value)
-    persist()
-  }
-
   /** 清空全部投递 */
   function clearAll(): void {
     applications.value = []
     events.value = []
     persist()
+  }
+
+  /** 全部分组标签（去重，供筛选/管理） */
+  const allGroups = computed(() => {
+    const set = new Set<string>()
+    for (const app of applications.value) {
+      for (const g of app.groups ?? []) if (g) set.add(g)
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'zh-CN'))
+  })
+
+  /** 批量导入：按传入列表入库（去重由调用方用 shared/dedupeImported 处理） */
+  function importApplications(items: Array<Omit<ApplicationPayload, 'id' | 'created_at' | 'updated_at'>>): number {
+    let added = 0
+    for (const item of items) {
+      try {
+        addApplication(item)
+        added++
+      } catch {
+        // 单条失败不影响整体导入
+      }
+    }
+    return added
   }
 
   return {
@@ -253,12 +267,13 @@ export const useApplicationStore = defineStore('application', () => {
     stats,
     total,
     hasCustomData,
+    allGroups,
     addApplication,
     updateApplication,
     removeApplication,
     transition,
     advance,
-    resetToDemo,
     clearAll,
+    importApplications,
   }
 })

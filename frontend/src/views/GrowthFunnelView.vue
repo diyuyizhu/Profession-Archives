@@ -74,7 +74,6 @@ const rejectMax = computed(() => Math.max(...rejected.value.map((r) => r.count),
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-4xl px-6 pb-16">
       <!-- 头部 -->
@@ -87,54 +86,54 @@ const rejectMax = computed(() => Math.max(...rejected.value.map((r) => r.count),
       <!-- 概览 -->
       <section class="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div v-for="o in overview" :key="o.label" class="card-glass p-4">
-          <div class="font-mono-data text-[22px] font-bold leading-none text-[#32f08c]">
-            {{ o.value }}<span class="ml-0.5 text-sm font-normal text-[rgba(245,249,254,0.4)]">{{ o.unit }}</span>
+          <div class="font-mono-data text-[22px] font-bold leading-none text-neutral-900">
+            {{ o.value }}<span class="ml-0.5 text-sm font-normal text-neutral-400">{{ o.unit }}</span>
           </div>
-          <div class="mt-2 text-[12.5px] font-medium text-[rgba(245,249,254,0.8)]">{{ o.label }}</div>
+          <div class="mt-2 text-[12.5px] font-medium text-neutral-800">{{ o.label }}</div>
         </div>
       </section>
 
       <div class="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <!-- 转化漏斗 -->
         <section class="card-glass p-5">
-          <div class="mb-1 text-[13px] font-semibold text-[#f5f9fe]">各环节到达人数</div>
-          <div class="mb-4 text-[11.5px] text-[rgba(245,249,254,0.4)]">
+          <div class="mb-1 text-[13px] font-semibold text-neutral-900">各环节到达人数</div>
+          <div class="mb-4 text-[11.5px] text-neutral-400">
             由状态事件日志精确还原 · 含曾经到达的投递
           </div>
           <FunnelBars :rows="funnel" highlight-label="Offer" />
 
           <div
             v-if="biggestDrop && biggestDrop.drop > 0"
-            class="mt-4 rounded-lg border border-[rgba(251,191,36,0.25)] bg-[rgba(251,191,36,0.06)] px-3 py-2.5 text-[12px] text-[rgba(245,249,254,0.7)]"
+            class="mt-4 rounded-lg border border-neutral-300 bg-neutral-100 px-3 py-2.5 text-[12px] text-neutral-700"
           >
-            ⚠️ 最大流失：<span class="text-[#fbbf24]">{{ biggestDrop.from }} → {{ biggestDrop.to }}</span>
-            掉了 <span class="font-mono text-[#fbbf24]">{{ biggestDrop.drop }}</span> 条，建议重点复盘该环节
+            ⚠️ 最大流失：<span class="text-neutral-600">{{ biggestDrop.from }} → {{ biggestDrop.to }}</span>
+            掉了 <span class="font-mono text-neutral-600">{{ biggestDrop.drop }}</span> 条，建议重点复盘该环节
           </div>
         </section>
 
         <!-- 失败原因分布 -->
         <section class="card-glass p-5">
-          <div class="mb-4 text-[13px] font-semibold text-[#f5f9fe]">失败原因分布</div>
+          <div class="mb-4 text-[13px] font-semibold text-neutral-900">失败原因分布</div>
           <div v-if="rejected.length" class="space-y-2.5">
             <div v-for="r in rejected" :key="r.reason" class="flex items-center gap-3">
-              <span class="w-20 shrink-0 truncate text-[12px] text-[rgba(245,249,254,0.55)]">
+              <span class="w-20 shrink-0 truncate text-[12px] text-neutral-500">
                 {{ r.reason }}
               </span>
-              <div class="h-2 flex-1 overflow-hidden rounded-full bg-[rgba(237,239,242,0.08)]">
+              <div class="h-2 flex-1 overflow-hidden rounded-full bg-neutral-100">
                 <div
-                  class="h-full rounded-full bg-[#f87171]"
+                  class="h-full rounded-full bg-red-600"
                   :style="{ width: `${Math.round((r.count / rejectMax) * 100)}%` }"
                 />
               </div>
-              <span class="w-6 shrink-0 text-right font-mono text-[12px] text-[#f5f9fe]">
+              <span class="w-6 shrink-0 text-right font-mono text-[12px] text-neutral-900">
                 {{ r.count }}
               </span>
             </div>
           </div>
-          <div v-else class="py-6 text-center text-[12px] text-[rgba(245,249,254,0.3)]">
+          <div v-else class="py-6 text-center text-[12px] text-neutral-400">
             暂无拒绝记录，标记投递「拒绝」时可填写原因
           </div>
-          <div class="mt-4 text-[11.5px] text-[rgba(245,249,254,0.35)]">
+          <div class="mt-4 text-[11.5px] text-neutral-400">
             在看板卡片「标记 → 拒绝」时填写失败原因，这里会自动汇总
           </div>
         </section>

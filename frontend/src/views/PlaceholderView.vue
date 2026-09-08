@@ -14,26 +14,25 @@ const milestone = (route.meta.milestone as string) ?? 'M1–M5'
   <div class="mx-auto max-w-3xl px-6 py-16">
     <div class="card-glass p-10 text-center">
       <div
-        class="font-mono-data mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgba(50,240,140,0.3)] bg-[rgba(50,240,140,0.08)] text-2xl font-bold text-[#32f08c]"
+        class="font-mono-data mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-neutral-300 bg-neutral-100 text-2xl font-bold text-neutral-900"
       >
         {{ code }}
       </div>
 
-      <h1 class="heading-tight mt-6 text-2xl tracking-wide text-[#f5f9fe]">
+      <h1 class="heading-tight mt-6 text-2xl tracking-wide text-neutral-900">
         {{ route.meta.title }}
       </h1>
 
       <div class="mt-4">
         <span
-          class="rounded-full border border-[rgba(50,240,140,0.25)] bg-[rgba(50,240,140,0.06)] px-3 py-1 font-mono text-xs text-[#32f08c]"
+          class="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1 font-mono text-xs text-neutral-900"
         >
           里程碑 {{ milestone }} 实现
         </span>
       </div>
 
-      <p class="mx-auto mt-5 max-w-md text-sm leading-relaxed text-[rgba(245,249,254,0.55)]">
+      <p class="mx-auto mt-5 max-w-md text-sm leading-relaxed text-neutral-500">
         该功能模块的入口已预留，功能将在后续里程碑阶段落地。
-        当前为 UI 预览版，专注界面与交互骨架。
       </p>
 
       <div class="mt-8 flex justify-center gap-3">

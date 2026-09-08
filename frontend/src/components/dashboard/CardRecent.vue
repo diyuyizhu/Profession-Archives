@@ -32,8 +32,8 @@ function companyOf(appId: string): string {
   <div class="space-y-3">
     <div v-for="app in recentApps" :key="app.id" class="flex items-center justify-between gap-2">
       <div class="min-w-0">
-        <span class="truncate text-[12.5px] font-medium text-[rgba(245,249,254,0.85)]">{{ app.company }}</span>
-        <span class="truncate text-[11.5px] text-[rgba(245,249,254,0.4)]"> · {{ app.title }}</span>
+        <span class="truncate text-[12.5px] font-medium text-neutral-800">{{ app.company }}</span>
+        <span class="truncate text-[11.5px] text-neutral-400"> · {{ app.title }}</span>
       </div>
       <span
         class="shrink-0 rounded-full border px-1.5 py-px text-[10px]"
@@ -43,16 +43,16 @@ function companyOf(appId: string): string {
       </span>
     </div>
 
-    <div v-if="latestInterviews.length" class="border-t border-[rgba(255,255,255,0.06)] pt-2.5">
+    <div v-if="latestInterviews.length" class="border-t border-neutral-200 pt-2.5">
       <div v-for="iv in latestInterviews" :key="iv.id" class="flex items-center justify-between gap-2 py-0.5">
-        <span class="truncate text-[12px] text-[rgba(245,249,254,0.55)]">
+        <span class="truncate text-[12px] text-neutral-500">
           {{ companyOf(iv.application_id) }} · 第 {{ iv.round }} 轮
         </span>
-        <span class="shrink-0 font-mono text-[10.5px] text-[rgba(245,249,254,0.35)]">{{ iv.occurred_at }}</span>
+        <span class="shrink-0 font-mono text-[10.5px] text-neutral-400">{{ iv.occurred_at }}</span>
       </div>
     </div>
 
-    <div v-if="!recentApps.length" class="py-4 text-center text-[11.5px] text-[rgba(245,249,254,0.3)]">
+    <div v-if="!recentApps.length" class="py-4 text-center text-[11.5px] text-neutral-400">
       暂无动态，先去记录一条吧
     </div>
   </div>

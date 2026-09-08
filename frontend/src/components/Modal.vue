@@ -63,7 +63,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(5,6,8,0.72)] p-4 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(17,24,39,0.4)] p-4"
     @click.self="emit('close')"
     @keydown="onKeydown"
   >
@@ -74,12 +74,11 @@ onBeforeUnmount(() => {
       :aria-label="title"
       class="card-glass max-h-[92vh] w-full overflow-y-auto p-6"
       :class="maxWidth"
-      style="backdrop-filter: blur(28px) saturate(1.6)"
     >
       <div class="mb-5 flex items-center justify-between">
-        <h3 class="heading-tight text-[16px] tracking-wide text-[#f5f9fe]">{{ title }}</h3>
+        <h3 class="heading-tight text-[16px] tracking-wide text-neutral-900">{{ title }}</h3>
         <button
-          class="text-[rgba(245,249,254,0.4)] transition-colors hover:text-[#f5f9fe]"
+          class="text-neutral-400 transition-colors hover:text-neutral-900"
           aria-label="关闭"
           @click="emit('close')"
         >

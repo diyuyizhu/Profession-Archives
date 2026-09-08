@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** 主按钮：薄荷绿渐变底 + 近黑字 + 光晕阴影，hover 提亮 */
+/** 主按钮：墨黑底 + 白字（btn-primary-trae，类名历史沿用） */
 withDefaults(
   defineProps<{
     type?: 'button' | 'submit'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** 次按钮：半透明白底 + 白边框，focus 薄荷绿描边 */
+/** 次按钮：白底灰边墨字（btn-secondary-trae，类名历史沿用） */
 withDefaults(
   defineProps<{
     type?: 'button' | 'submit'

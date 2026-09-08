@@ -147,7 +147,6 @@ const searchable = computed(() => {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-6xl px-6 pb-16">
       <PageHeader code="C3" title="面试复盘" desc="基于一轮或多轮记录生成要点 · 沉淀为可检索面经" />
@@ -157,15 +156,15 @@ const searchable = computed(() => {
         v-if="flash"
         role="status"
         aria-live="polite"
-        class="card-glass fixed left-1/2 top-20 z-50 -translate-x-1/2 px-5 py-3 text-[13px] text-[#60f2bd]"
+        class="card-glass fixed left-1/2 top-20 z-50 -translate-x-1/2 px-5 py-3 text-[13px] text-neutral-600"
       >
         {{ flash }}
       </div>
 
       <!-- 全局检索 -->
-      <section class="card-glass mb-6 p-4" style="backdrop-filter: blur(28px) saturate(1.6)">
+      <section class="card-glass mb-6 p-4">
         <input v-model="search" class="input-trae" placeholder="🔍 检索全部沉淀面经（公司 / 岗位 / 关键词）…" />
-        <div v-if="search.trim()" class="mt-2 text-[11.5px] text-[rgba(245,249,254,0.4)]">
+        <div v-if="search.trim()" class="mt-2 text-[11.5px] text-neutral-400">
           命中 {{ searchable.length }} 条复盘
         </div>
       </section>
@@ -187,15 +186,15 @@ const searchable = computed(() => {
             class="card-glass flex h-[300px] flex-col items-center justify-center gap-3 text-center"
           >
             <span class="text-3xl">📝</span>
-            <div class="text-[14px] text-[rgba(245,249,254,0.6)]">选择一个投递，基于其面试记录生成复盘</div>
+            <div class="text-[14px] text-neutral-600">选择一个投递，基于其面试记录生成复盘</div>
           </div>
 
           <div v-else class="space-y-4">
             <!-- 投递摘要 + 生成按钮 -->
-            <div class="card-glass flex flex-wrap items-center justify-between gap-3 p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+            <div class="card-glass flex flex-wrap items-center justify-between gap-3 p-5">
               <div>
-                <div class="heading-tight text-[17px] text-[#f5f9fe]">{{ selected.title }}</div>
-                <div class="mt-0.5 text-[12.5px] text-[rgba(245,249,254,0.5)]">
+                <div class="heading-tight text-[17px] text-neutral-900">{{ selected.title }}</div>
+                <div class="mt-0.5 text-[12.5px] text-neutral-500">
                   {{ selected.company }} · {{ interviews.length }} 轮面试
                 </div>
               </div>
@@ -205,56 +204,56 @@ const searchable = computed(() => {
             </div>
 
             <!-- 复盘草稿编辑器 -->
-            <div v-if="draft" class="card-glass p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+            <div v-if="draft" class="card-glass p-5">
               <div class="mb-4 flex items-center justify-between">
-                <span class="text-[13px] font-semibold text-[#f5f9fe]">
+                <span class="text-[13px] font-semibold text-neutral-900">
                   复盘要点（本地启发式 · 可编辑）
                 </span>
-                <span class="text-[11px] text-[rgba(245,249,254,0.35)]">
+                <span class="text-[11px] text-neutral-400">
                   接入 AI 后自动升级为模型生成
                 </span>
               </div>
 
               <div class="space-y-4">
                 <!-- 做得好 -->
-                <div class="rounded-lg border border-[rgba(50,240,140,0.2)] bg-[rgba(50,240,140,0.04)] p-3.5">
+                <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-3.5">
                   <div class="mb-2 flex items-center justify-between">
-                    <span class="text-[12.5px] font-semibold text-[#60f2bd]">✅ 做得好</span>
-                    <button class="text-[11px] text-[rgba(245,249,254,0.4)] hover:text-[#32f08c]" @click="addLine('highlights')">
+                    <span class="text-[12.5px] font-semibold text-neutral-600">✅ 做得好</span>
+                    <button class="text-[11px] text-neutral-400 hover:text-neutral-900" @click="addLine('highlights')">
                       ＋ 新增
                     </button>
                   </div>
                   <div v-for="(line, i) in draft.highlights" :key="i" class="flex items-center gap-2">
                     <input v-model="draft.highlights[i]" class="input-trae h-9 text-[12.5px]" />
-                    <button class="text-[11px] text-[rgba(245,249,254,0.3)] hover:text-[#f87171]" @click="removeLine('highlights', i)">✕</button>
+                    <button class="text-[11px] text-neutral-400 hover:text-red-600" @click="removeLine('highlights', i)">✕</button>
                   </div>
                 </div>
 
                 <!-- 待改进 -->
-                <div class="rounded-lg border border-[rgba(248,113,113,0.2)] bg-[rgba(248,113,113,0.04)] p-3.5">
+                <div class="rounded-lg border border-red-200 bg-red-50 p-3.5">
                   <div class="mb-2 flex items-center justify-between">
-                    <span class="text-[12.5px] font-semibold text-[#f87171]">⚠️ 待改进</span>
-                    <button class="text-[11px] text-[rgba(245,249,254,0.4)] hover:text-[#f87171]" @click="addLine('improvements')">
+                    <span class="text-[12.5px] font-semibold text-red-600">⚠️ 待改进</span>
+                    <button class="text-[11px] text-neutral-400 hover:text-red-600" @click="addLine('improvements')">
                       ＋ 新增
                     </button>
                   </div>
                   <div v-for="(line, i) in draft.improvements" :key="i" class="flex items-center gap-2">
                     <input v-model="draft.improvements[i]" class="input-trae h-9 text-[12.5px]" />
-                    <button class="text-[11px] text-[rgba(245,249,254,0.3)] hover:text-[#f87171]" @click="removeLine('improvements', i)">✕</button>
+                    <button class="text-[11px] text-neutral-400 hover:text-red-600" @click="removeLine('improvements', i)">✕</button>
                   </div>
                 </div>
 
                 <!-- 下次策略 -->
-                <div class="rounded-lg border border-[rgba(56,189,248,0.2)] bg-[rgba(56,189,248,0.04)] p-3.5">
+                <div class="rounded-lg border border-neutral-300 bg-neutral-50 p-3.5">
                   <div class="mb-2 flex items-center justify-between">
-                    <span class="text-[12.5px] font-semibold text-[#38bdf8]">🎯 下次策略</span>
-                    <button class="text-[11px] text-[rgba(245,249,254,0.4)] hover:text-[#38bdf8]" @click="addLine('next_strategy')">
+                    <span class="text-[12.5px] font-semibold text-neutral-600">🎯 下次策略</span>
+                    <button class="text-[11px] text-neutral-400 hover:text-neutral-600" @click="addLine('next_strategy')">
                       ＋ 新增
                     </button>
                   </div>
                   <div v-for="(line, i) in draft.next_strategy" :key="i" class="flex items-center gap-2">
                     <input v-model="draft.next_strategy[i]" class="input-trae h-9 text-[12.5px]" />
-                    <button class="text-[11px] text-[rgba(245,249,254,0.3)] hover:text-[#f87171]" @click="removeLine('next_strategy', i)">✕</button>
+                    <button class="text-[11px] text-neutral-400 hover:text-red-600" @click="removeLine('next_strategy', i)">✕</button>
                   </div>
                 </div>
               </div>
@@ -267,39 +266,39 @@ const searchable = computed(() => {
 
             <!-- 已保存复盘 -->
             <div v-if="savedReflections.length" class="space-y-3">
-              <div class="text-[11px] font-medium tracking-widest text-[rgba(245,249,254,0.35)]">
+              <div class="text-[11px] font-medium tracking-widest text-neutral-400">
                 已保存复盘（{{ savedReflections.length }} 条 · 同投递保存自动覆盖上一版）
               </div>
               <div v-for="ref in savedReflections" :key="ref.id" class="card-glass p-5">
                 <div class="flex items-center justify-between">
-                  <span class="font-mono text-[11px] text-[rgba(245,249,254,0.35)]">
+                  <span class="font-mono text-[11px] text-neutral-400">
                     {{ new Date(ref.created_at).toLocaleDateString('zh-CN') }} · 生成
                   </span>
-                  <button class="text-[11px] text-[rgba(245,249,254,0.35)] hover:text-[#f87171]" @click="removeReflection(ref.id)">
+                  <button class="text-[11px] text-neutral-400 hover:text-red-600" @click="removeReflection(ref.id)">
                     删除
                   </button>
                 </div>
                 <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
                   <div>
-                    <div class="mb-1.5 text-[11px] font-semibold text-[#60f2bd]">做得好</div>
-                    <ul class="space-y-1 text-[12.5px] text-[rgba(245,249,254,0.65)]">
+                    <div class="mb-1.5 text-[11px] font-semibold text-neutral-600">做得好</div>
+                    <ul class="space-y-1 text-[12.5px] text-neutral-600">
                       <li v-for="h in ref.highlights" :key="h">· {{ h }}</li>
                     </ul>
                   </div>
                   <div>
-                    <div class="mb-1.5 text-[11px] font-semibold text-[#f87171]">待改进</div>
-                    <ul class="space-y-1 text-[12.5px] text-[rgba(245,249,254,0.65)]">
+                    <div class="mb-1.5 text-[11px] font-semibold text-red-600">待改进</div>
+                    <ul class="space-y-1 text-[12.5px] text-neutral-600">
                       <li v-for="i in ref.improvements" :key="i">· {{ i }}</li>
                     </ul>
                   </div>
                   <div>
-                    <div class="mb-1.5 text-[11px] font-semibold text-[#38bdf8]">下次策略</div>
-                    <ul class="space-y-1 text-[12.5px] text-[rgba(245,249,254,0.65)]">
+                    <div class="mb-1.5 text-[11px] font-semibold text-neutral-600">下次策略</div>
+                    <ul class="space-y-1 text-[12.5px] text-neutral-600">
                       <li v-for="s in ref.next_strategy" :key="s">· {{ s }}</li>
                     </ul>
                   </div>
                 </div>
-                <pre class="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg border border-[rgba(255,255,255,0.06)] bg-[rgba(237,239,242,0.03)] p-3 text-[12px] leading-relaxed text-[rgba(245,249,254,0.5)]">{{ ref.content_md }}</pre>
+                <pre class="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-[12px] leading-relaxed text-neutral-500">{{ ref.content_md }}</pre>
               </div>
             </div>
           </div>
@@ -308,14 +307,14 @@ const searchable = computed(() => {
 
       <!-- 检索结果（全局面经） -->
       <section v-if="searchable.length" class="mt-8">
-        <div class="mb-3 text-[11px] font-medium tracking-widest text-[rgba(245,249,254,0.35)]">
+        <div class="mb-3 text-[11px] font-medium tracking-widest text-neutral-400">
           检索结果
         </div>
         <div v-for="ref in searchable" :key="ref.id" class="card-glass mb-3 p-4">
-          <div class="text-[12px] font-medium text-[#60f2bd]">
+          <div class="text-[12px] font-medium text-neutral-600">
             {{ appStore.applications.find((a) => a.id === ref.application_id)?.company ?? '未知公司' }} · {{ appStore.applications.find((a) => a.id === ref.application_id)?.title ?? '' }}
           </div>
-          <ul class="mt-2 space-y-1 text-[12.5px] text-[rgba(245,249,254,0.65)]">
+          <ul class="mt-2 space-y-1 text-[12.5px] text-neutral-600">
             <li v-for="h in ref.improvements.slice(0, 3)" :key="h">· {{ h }}</li>
             <li v-for="s in ref.next_strategy.slice(0, 3)" :key="s">· {{ s }}</li>
           </ul>

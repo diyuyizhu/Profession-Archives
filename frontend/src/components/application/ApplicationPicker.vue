@@ -18,8 +18,8 @@ defineEmits<{ select: [id: string] }>()
 </script>
 
 <template>
-  <aside class="card-glass h-fit p-3" style="backdrop-filter: blur(28px) saturate(1.6)">
-    <div class="px-2 pb-2 text-[11px] font-medium tracking-widest text-[rgba(245,249,254,0.35)]">
+  <aside class="card-glass h-fit p-3">
+    <div class="px-2 pb-2 text-[11px] font-medium tracking-widest text-neutral-400">
       选择投递（{{ candidates.length }}）
     </div>
     <div class="max-h-[70vh] space-y-1 overflow-y-auto">
@@ -27,12 +27,12 @@ defineEmits<{ select: [id: string] }>()
         v-for="app in candidates"
         :key="app.id"
         class="block w-full rounded-lg px-3 py-2.5 text-left transition-colors"
-        :class="selectedId === app.id ? 'bg-[rgba(50,240,140,0.1)]' : 'hover:bg-[rgba(237,239,242,0.06)]'"
+        :class="selectedId === app.id ? 'bg-neutral-100' : 'hover:bg-neutral-100'"
         @click="$emit('select', app.id)"
       >
-        <div class="truncate text-[13px] font-medium text-[#f5f9fe]">{{ app.title }}</div>
+        <div class="truncate text-[13px] font-medium text-neutral-900">{{ app.title }}</div>
         <div class="mt-0.5 flex items-center justify-between">
-          <span class="truncate text-[11.5px] text-[rgba(245,249,254,0.45)]">{{ app.company }}</span>
+          <span class="truncate text-[11.5px] text-neutral-500">{{ app.company }}</span>
           <span
             class="shrink-0 rounded-full border px-1.5 py-px text-[10px]"
             :class="[statusMeta(app.status, app.total_rounds).chip, statusMeta(app.status, app.total_rounds).text]"
@@ -40,11 +40,11 @@ defineEmits<{ select: [id: string] }>()
             {{ statusMeta(app.status, app.total_rounds).label }}
           </span>
         </div>
-        <div class="mt-0.5 text-[10.5px] text-[rgba(245,249,254,0.3)]">{{ metaFor(app) }}</div>
+        <div class="mt-0.5 text-[10.5px] text-neutral-400">{{ metaFor(app) }}</div>
       </button>
       <div
         v-if="!candidates.length"
-        class="px-3 py-6 text-center text-[11.5px] text-[rgba(245,249,254,0.3)]"
+        class="px-3 py-6 text-center text-[11.5px] text-neutral-400"
       >
         {{ emptyHint ?? '暂无投递，先去看板创建' }}
       </div>

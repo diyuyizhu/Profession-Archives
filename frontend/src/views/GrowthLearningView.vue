@@ -82,7 +82,6 @@ function progressOf(plan: LearningPlan) {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-3xl px-6 pb-16">
       <!-- 头部 -->
@@ -103,8 +102,8 @@ function progressOf(plan: LearningPlan) {
         class="card-glass flex flex-col items-center justify-center gap-3 px-5 py-14 text-center"
       >
         <span class="text-3xl">📈</span>
-        <div class="text-[14px] text-[rgba(245,249,254,0.6)]">还没有学习计划</div>
-        <div class="text-[12px] text-[rgba(245,249,254,0.35)]">
+        <div class="text-[14px] text-neutral-600">还没有学习计划</div>
+        <div class="text-[12px] text-neutral-400">
           去「转化漏斗」看短板，或让复盘自动生成补足计划
         </div>
       </div>
@@ -115,20 +114,20 @@ function progressOf(plan: LearningPlan) {
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
-                <span class="heading-tight text-[15px] text-[#f5f9fe]">{{ taskTitleOf(plan) }}</span>
+                <span class="heading-tight text-[15px] text-neutral-900">{{ taskTitleOf(plan) }}</span>
                 <span
                   v-if="plan.source === 'reflection'"
-                  class="rounded-full border border-[rgba(56,189,248,0.25)] bg-[rgba(56,189,248,0.06)] px-1.5 py-px text-[10px] text-[#38bdf8]"
+                  class="rounded-full border border-neutral-300 bg-neutral-50 px-1.5 py-px text-[10px] text-neutral-600"
                 >
                   复盘生成
                 </span>
               </div>
-              <p v-if="plan.description" class="mt-0.5 text-[12px] text-[rgba(245,249,254,0.45)]">
+              <p v-if="plan.description" class="mt-0.5 text-[12px] text-neutral-500">
                 {{ plan.description }}
               </p>
             </div>
             <button
-              class="shrink-0 text-[11.5px] text-[rgba(245,249,254,0.35)] hover:text-[#f87171]"
+              class="shrink-0 text-[11.5px] text-neutral-400 hover:text-red-600"
               @click="store.removePlan(plan.id)"
             >
               删除计划
@@ -137,13 +136,13 @@ function progressOf(plan: LearningPlan) {
 
           <!-- 进度 -->
           <div class="mt-3 flex items-center gap-3">
-            <div class="h-2 flex-1 overflow-hidden rounded-full bg-[rgba(237,239,242,0.08)]">
+            <div class="h-2 flex-1 overflow-hidden rounded-full bg-neutral-100">
               <div
-                class="h-full rounded-full bg-gradient-to-r from-[#32f08c]/70 to-[#60f2bd]"
+                class="h-full rounded-full bg-neutral-900"
                 :style="{ width: `${progressOf(plan).pct}%` }"
               />
             </div>
-            <span class="font-mono text-[11px] text-[rgba(245,249,254,0.45)]">
+            <span class="font-mono text-[11px] text-neutral-500">
               {{ progressOf(plan).done }}/{{ progressOf(plan).total }}
             </span>
           </div>
@@ -153,22 +152,22 @@ function progressOf(plan: LearningPlan) {
             <div
               v-for="task in plan.tasks"
               :key="task.id"
-              class="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-[rgba(237,239,242,0.04)]"
+              class="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-neutral-50"
             >
               <input
                 type="checkbox"
-                class="h-4 w-4 shrink-0 accent-[#32f08c]"
+                class="h-4 w-4 shrink-0 accent-neutral-900"
                 :checked="task.done"
                 @change="store.toggleTask(plan.id, task.id)"
               />
               <span
                 class="min-w-0 flex-1 text-[13px]"
-                :class="task.done ? 'text-[rgba(245,249,254,0.3)] line-through' : 'text-[rgba(245,249,254,0.75)]'"
+                :class="task.done ? 'text-neutral-400 line-through' : 'text-neutral-700'"
               >
                 {{ task.title }}
               </span>
               <button
-                class="shrink-0 text-[11px] text-[rgba(245,249,254,0.25)] hover:text-[#f87171]"
+                class="shrink-0 text-[11px] text-neutral-300 hover:text-red-600"
                 @click="store.removeTask(plan.id, task.id)"
               >
                 ✕
@@ -200,15 +199,15 @@ function progressOf(plan: LearningPlan) {
       <Modal v-if="showCreate" title="新建学习计划" @close="showCreate = false">
         <form class="space-y-4" @submit.prevent="saveCreate">
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">计划名称 *</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">计划名称 *</span>
               <input v-model="createForm.title" class="input-trae" placeholder="如：Web 安全专项提升" />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">描述</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">描述</span>
               <input v-model="createForm.description" class="input-trae" placeholder="为什么补、怎么补…" />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">任务（每行一个，回车换行）</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">任务（每行一个，回车换行）</span>
               <textarea
                 v-model="createForm.tasksText"
                 class="input-trae min-h-[120px] resize-y py-2.5"

@@ -32,10 +32,10 @@ const stats = computed(() => {
 <template>
   <div class="grid h-full grid-cols-2 gap-3 sm:grid-cols-4">
     <div v-for="s in stats" :key="s.label" class="flex flex-col justify-center">
-      <div class="font-mono-data text-[24px] font-bold leading-none text-[#32f08c]">
-        {{ s.value }}<span class="ml-0.5 text-sm font-normal text-[rgba(245,249,254,0.4)]">{{ s.unit }}</span>
+      <div class="font-mono-data text-[24px] font-bold leading-none text-neutral-900">
+        {{ s.value }}<span class="ml-0.5 text-sm font-normal text-neutral-400">{{ s.unit }}</span>
       </div>
-      <div class="mt-1.5 text-[12px] font-medium text-[rgba(245,249,254,0.75)]">{{ s.label }}</div>
+      <div class="mt-1.5 text-[12px] font-medium text-neutral-700">{{ s.label }}</div>
     </div>
   </div>
 </template>

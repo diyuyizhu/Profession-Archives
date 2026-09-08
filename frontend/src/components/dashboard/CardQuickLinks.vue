@@ -11,9 +11,9 @@ import { NAV_ITEMS } from '@/data/nav'
       v-for="item in NAV_ITEMS"
       :key="item.key"
       :to="item.path"
-      class="flex items-center gap-2.5 rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(237,239,242,0.04)] px-3 py-2.5 transition-colors no-underline hover:border-[rgba(50,240,140,0.35)] hover:bg-[rgba(50,240,140,0.06)]"
+      class="flex items-center gap-2.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 transition-colors no-underline hover:border-neutral-400 hover:bg-neutral-50"
     >
-      <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[rgba(50,240,140,0.08)] text-[#32f08c]">
+      <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-900">
         <svg
           class="h-[15px] w-[15px]"
           viewBox="0 0 24 24"
@@ -26,7 +26,7 @@ import { NAV_ITEMS } from '@/data/nav'
           <path :d="item.icon" />
         </svg>
       </span>
-      <span class="truncate text-[12.5px] font-medium text-[rgba(245,249,254,0.75)]">{{ item.title }}</span>
+      <span class="truncate text-[12.5px] font-medium text-neutral-700">{{ item.title }}</span>
     </RouterLink>
   </div>
 </template>

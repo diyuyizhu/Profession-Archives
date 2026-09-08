@@ -69,6 +69,43 @@ function onPointerUp(): void {
   window.removeEventListener('pointerup', onPointerUp)
 }
 
+/* ── 拖拽排序（HTML5 Drag and Drop） ── */
+const dragOver = ref(false)
+
+function onDragStart(e: DragEvent): void {
+  if (!props.isEditing) { e.preventDefault(); return }
+  if (!e.dataTransfer) return
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', props.cardKey)
+}
+
+function onDragOver(): void {
+  if (!props.isEditing) return
+  dragOver.value = true
+}
+
+function onDragEnter(): void {
+  if (!props.isEditing) return
+  dragOver.value = true
+}
+
+function onDragLeave(): void {
+  dragOver.value = false
+}
+
+function onDropCard(e: DragEvent): void {
+  dragOver.value = false
+  if (!props.isEditing || !e.dataTransfer) return
+  const fromKey = e.dataTransfer.getData('text/plain')
+  if (fromKey && fromKey !== props.cardKey) {
+    dash.moveTo(fromKey, props.cardKey)
+  }
+}
+
+function onDragEnd(): void {
+  dragOver.value = false
+}
+
 onBeforeUnmount(() => {
   if (drag) onPointerUp()
 })
@@ -78,28 +115,35 @@ onBeforeUnmount(() => {
   <section
     ref="container"
     class="dash-card card-glass group relative flex flex-col overflow-hidden p-5"
-    :class="dragging ? 'cursor-nwse-resize select-none' : ''"
+    :class="[dragging ? 'cursor-nwse-resize select-none' : '', dragOver ? 'ring-2 ring-neutral-900 ring-offset-1 ring-offset-white' : '']"
+    :draggable="isEditing"
     :style="spanStyle()"
+    @dragstart.self="onDragStart"
+    @dragend="onDragEnd"
+    @dragover.prevent="onDragOver"
+    @dragenter="onDragEnter"
+    @dragleave="onDragLeave"
+    @drop="onDropCard"
   >
     <div class="mb-4 flex shrink-0 items-center justify-between">
-      <h2 class="text-[13px] font-semibold tracking-wide text-[#f5f9fe]">{{ title }}</h2>
+      <h2 class="text-[13px] font-semibold tracking-wide text-neutral-900">{{ title }}</h2>
       <div v-if="isEditing" class="flex items-center gap-1">
         <button
-          class="rounded border border-[rgba(255,255,255,0.12)] px-2 py-0.5 text-[11px] text-[rgba(245,249,254,0.55)] hover:border-[rgba(50,240,140,0.4)] hover:text-[#32f08c]"
+          class="rounded border border-neutral-300 px-2 py-0.5 text-[11px] text-neutral-500 hover:border-neutral-900 hover:text-neutral-900"
           title="上移"
           @click="dash.moveUp(cardKey)"
         >
           ↑
         </button>
         <button
-          class="rounded border border-[rgba(255,255,255,0.12)] px-2 py-0.5 text-[11px] text-[rgba(245,249,254,0.55)] hover:border-[rgba(50,240,140,0.4)] hover:text-[#32f08c]"
+          class="rounded border border-neutral-300 px-2 py-0.5 text-[11px] text-neutral-500 hover:border-neutral-900 hover:text-neutral-900"
           title="下移"
           @click="dash.moveDown(cardKey)"
         >
           ↓
         </button>
         <button
-          class="rounded border border-[rgba(248,113,113,0.3)] px-2 py-0.5 text-[11px] text-[rgba(248,113,113,0.7)] hover:bg-[rgba(248,113,113,0.1)]"
+          class="rounded border border-red-300 px-2 py-0.5 text-[11px] text-red-500 hover:bg-red-100"
           title="隐藏此卡片"
           @click="dash.hide(cardKey)"
         >
@@ -119,7 +163,7 @@ onBeforeUnmount(() => {
       :title="`拖拽调整大小（当前 ${size.w}×${size.h}）`"
       @pointerdown="onPointerDown"
     >
-      <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="rgba(50,240,140,0.8)" stroke-width="1.5">
+      <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="#111827" stroke-width="1.5">
         <path d="M11 11h4M11 13h4M4 11h4M4 13h4" stroke-linecap="round" />
       </svg>
     </div>

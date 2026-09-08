@@ -24,18 +24,18 @@ function windowCmd(cmd: string): void {
 }
 
 const WIN_BTN =
-  'flex h-7 w-9 items-center justify-center rounded-md text-[13px] text-[rgba(245,249,254,0.55)] transition-colors hover:bg-[rgba(237,239,242,0.1)] hover:text-[#f5f9fe]'
+  'flex h-7 w-9 items-center justify-center rounded-md text-[13px] text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900'
 </script>
 
 <template>
   <header
     data-tauri-drag-region
-    class="flex h-14 shrink-0 items-center justify-between border-b border-[rgba(255,255,255,0.06)] bg-[rgba(10,11,13,0.3)] pl-4 pr-1 backdrop-blur-2xl"
+    class="flex h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white pl-4 pr-1"
   >
     <div class="flex min-w-0 items-center gap-3">
-      <!-- 汉堡按钮：薄荷绿描边徽章样式，切换侧栏折叠 -->
+      <!-- 汉堡按钮：切换侧栏折叠 -->
       <button
-        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[rgba(50,240,140,0.4)] bg-[rgba(50,240,140,0.08)] text-[#32f08c] transition-all duration-200 hover:bg-[rgba(50,240,140,0.18)] hover:shadow-[0_0_12px_rgba(50,240,140,0.3)]"
+        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
         title="折叠 / 展开侧栏"
         @click="ui.toggleSidebar()"
       >
@@ -52,7 +52,7 @@ const WIN_BTN =
         </svg>
       </button>
 
-      <h1 class="heading-tight truncate text-[15px] tracking-wide text-[#f5f9fe]">{{ title }}</h1>
+      <h1 class="heading-tight truncate text-[15px] tracking-wide text-neutral-900">{{ title }}</h1>
     </div>
 
     <!-- 右侧：窗口控制（仅桌面版无边框时显示） -->
@@ -60,7 +60,7 @@ const WIN_BTN =
       <button :class="WIN_BTN" aria-label="最小化" @click="windowCmd('plugin:window|minimize')">─</button>
       <button :class="WIN_BTN" aria-label="最大化 / 还原" @click="windowCmd('plugin:window|toggle_maximize')">▢</button>
       <button
-        class="flex h-7 w-9 items-center justify-center rounded-md text-[13px] text-[rgba(245,249,254,0.55)] transition-colors hover:bg-[rgba(248,113,113,0.8)] hover:text-white"
+        class="flex h-7 w-9 items-center justify-center rounded-md text-[13px] text-neutral-500 transition-colors hover:bg-red-600 hover:text-white"
         aria-label="关闭"
         @click="windowCmd('plugin:window|close')"
       >

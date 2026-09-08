@@ -17,21 +17,21 @@ const topTags = computed(() => card.value.tagCloud.slice(0, 3).map((t) => t.name
   <div class="flex h-full flex-col justify-between gap-4">
     <div class="flex items-center gap-4">
       <div
-        class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-[rgba(50,240,140,0.5)] bg-[rgba(50,240,140,0.1)] text-2xl font-bold text-[#32f08c]"
+        class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-neutral-900 bg-neutral-100 text-2xl font-bold text-neutral-900"
       >
         {{ (profile.full_name || '?').slice(0, 1) }}
       </div>
       <div class="min-w-0">
-        <div class="heading-tight truncate text-[17px] text-[#f5f9fe]">
+        <div class="heading-tight truncate text-[17px] text-neutral-900">
           {{ profile.full_name || '未命名' }}
         </div>
-        <div v-if="profile.headline" class="truncate text-[12.5px] text-[#60f2bd]">
+        <div v-if="profile.headline" class="truncate text-[12.5px] text-neutral-600">
           {{ profile.headline }}
         </div>
       </div>
     </div>
 
-    <div v-if="profile.email || profile.phone" class="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-[rgba(245,249,254,0.5)]">
+    <div v-if="profile.email || profile.phone" class="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-neutral-500">
       <span v-if="profile.email">✉ {{ profile.email }}</span>
       <span v-if="profile.phone">☎ {{ profile.phone }}</span>
     </div>
@@ -40,13 +40,13 @@ const topTags = computed(() => card.value.tagCloud.slice(0, 3).map((t) => t.name
       <span
         v-for="t in topTags"
         :key="t"
-        class="rounded-full border border-[rgba(50,240,140,0.25)] bg-[rgba(50,240,140,0.06)] px-2 py-0.5 text-[10.5px] text-[#60f2bd]"
+        class="rounded-full border border-neutral-300 bg-neutral-50 px-2 py-0.5 text-[10.5px] text-neutral-600"
       >
         #{{ t }}
       </span>
     </div>
 
-    <RouterLink to="/card" class="text-[12px] font-medium text-[#32f08c] hover:text-[#60f2bd] no-underline">
+    <RouterLink to="/card" class="text-[12px] font-medium text-neutral-900 hover:underline no-underline">
       查看完整名片 →
     </RouterLink>
   </div>

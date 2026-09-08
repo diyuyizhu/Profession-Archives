@@ -10,13 +10,14 @@ import { uid } from '@/data/seed'
 
 const KEY = 'pa-collections-v1'
 
+/** 池子徽章色板：经典黑白灰阶（新池子按序轮换深浅） */
 const POOL_COLORS = [
-  'text-[#38bdf8]',
-  'text-[#a78bfa]',
-  'text-[#32f08c]',
-  'text-[#fbbf24]',
-  'text-[#f472b6]',
-  'text-[#f97316]',
+  'text-neutral-900',
+  'text-neutral-600',
+  'text-neutral-400',
+  'text-neutral-700',
+  'text-neutral-500',
+  'text-neutral-800',
 ]
 
 /** 首次使用：空池子（不预置示例，用户自建） */
@@ -92,7 +93,7 @@ export const useCollectionsStore = defineStore('collections', () => {
   }
 
   function colorOf(id: string | undefined): string {
-    return collections.value.find((c) => c.id === id)?.color ?? 'text-[rgba(245,249,254,0.4)]'
+    return collections.value.find((c) => c.id === id)?.color ?? 'text-neutral-400'
   }
 
   return { collections, total, allTags, addCollection, renameCollection, removeCollection, nameOf, colorOf }

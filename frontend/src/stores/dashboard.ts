@@ -143,6 +143,21 @@ export const useDashboardStore = defineStore('dashboard', () => {
     persist()
   }
 
+  /** 将 fromKey 卡片移动到 toKey 卡片的位置（插入到前面） */
+  function moveTo(fromKey: string, toKey: string): void {
+    const fromIdx = state.value.order.indexOf(fromKey)
+    const toIdx = state.value.order.indexOf(toKey)
+    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return
+    const arr = [...state.value.order]
+    // 先移除
+    arr.splice(fromIdx, 1)
+    // 插入到目标位置（移除后 toIdx 可能已偏移）
+    const newToIdx = arr.indexOf(toKey)
+    arr.splice(newToIdx, 0, fromKey)
+    state.value.order = arr
+    persist()
+  }
+
   function reset(): void {
     state.value = { order: [...DEFAULT_ORDER], sizes: {} }
     persist()
@@ -158,6 +173,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     show,
     moveUp,
     moveDown,
+    moveTo,
     reset,
   }
 })

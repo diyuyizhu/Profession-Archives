@@ -62,7 +62,6 @@ function monthMax(): number {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-4xl px-6 pb-16">
       <!-- 头部 -->
@@ -73,30 +72,30 @@ function monthMax(): number {
       <!-- 概览 -->
       <section class="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div v-for="o in overview" :key="o.label" class="card-glass p-4">
-          <div class="font-mono-data text-[22px] font-bold leading-none text-[#32f08c]">
-            {{ o.value }}<span class="ml-0.5 text-sm font-normal text-[rgba(245,249,254,0.4)]">{{ o.unit }}</span>
+          <div class="font-mono-data text-[22px] font-bold leading-none text-neutral-900">
+            {{ o.value }}<span class="ml-0.5 text-sm font-normal text-neutral-400">{{ o.unit }}</span>
           </div>
-          <div class="mt-2 text-[12.5px] font-medium text-[rgba(245,249,254,0.8)]">{{ o.label }}</div>
+          <div class="mt-2 text-[12.5px] font-medium text-neutral-800">{{ o.label }}</div>
         </div>
       </section>
 
       <div class="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <!-- 状态分布 -->
         <section class="card-glass p-5">
-          <div class="mb-4 text-[13px] font-semibold text-[#f5f9fe]">状态分布</div>
+          <div class="mb-4 text-[13px] font-semibold text-neutral-900">状态分布</div>
           <div class="space-y-2.5">
             <div v-for="status in store.boardStatuses" :key="status" class="flex items-center gap-3">
-              <span class="w-14 shrink-0 text-[12px] text-[rgba(245,249,254,0.55)]">
+              <span class="w-14 shrink-0 text-[12px] text-neutral-500">
                 {{ statusMeta(status).label }}
               </span>
-              <div class="h-2 flex-1 overflow-hidden rounded-full bg-[rgba(237,239,242,0.08)]">
+              <div class="h-2 flex-1 overflow-hidden rounded-full bg-neutral-100">
                 <div
                   class="h-full rounded-full"
                   :class="statusMeta(status).dot"
                   :style="{ width: barWidth(s.byStatus[status] ?? 0) }"
                 />
               </div>
-              <span class="w-6 shrink-0 text-right font-mono text-[12px] text-[#f5f9fe]">
+              <span class="w-6 shrink-0 text-right font-mono text-[12px] text-neutral-900">
                 {{ s.byStatus[status] ?? 0 }}
               </span>
             </div>
@@ -105,24 +104,24 @@ function monthMax(): number {
 
         <!-- 渠道分布 -->
         <section class="card-glass p-5">
-          <div class="mb-4 text-[13px] font-semibold text-[#f5f9fe]">渠道分布</div>
+          <div class="mb-4 text-[13px] font-semibold text-neutral-900">渠道分布</div>
           <div v-if="s.byChannel.length" class="space-y-2.5">
             <div v-for="c in s.byChannel" :key="c.channel" class="flex items-center gap-3">
-              <span class="w-20 shrink-0 truncate text-[12px] text-[rgba(245,249,254,0.55)]">
+              <span class="w-20 shrink-0 truncate text-[12px] text-neutral-500">
                 {{ c.channel }}
               </span>
-              <div class="h-2 flex-1 overflow-hidden rounded-full bg-[rgba(237,239,242,0.08)]">
+              <div class="h-2 flex-1 overflow-hidden rounded-full bg-neutral-100">
                 <div
-                  class="h-full rounded-full bg-[#38bdf8]"
+                  class="h-full rounded-full bg-neutral-400"
                   :style="{ width: `${Math.round((c.count / channelMax()) * 100)}%` }"
                 />
               </div>
-              <span class="w-6 shrink-0 text-right font-mono text-[12px] text-[#f5f9fe]">
+              <span class="w-6 shrink-0 text-right font-mono text-[12px] text-neutral-900">
                 {{ c.count }}
               </span>
             </div>
           </div>
-          <div v-else class="py-6 text-center text-[12px] text-[rgba(245,249,254,0.3)]">
+          <div v-else class="py-6 text-center text-[12px] text-neutral-400">
             暂无投递数据
           </div>
         </section>
@@ -130,7 +129,7 @@ function monthMax(): number {
 
       <!-- 月度趋势 -->
       <section class="card-glass mt-4 p-5">
-        <div class="mb-4 text-[13px] font-semibold text-[#f5f9fe]">投递趋势（近 12 月）</div>
+        <div class="mb-4 text-[13px] font-semibold text-neutral-900">投递趋势（近 12 月）</div>
         <div class="flex h-[120px] items-end gap-1.5">
           <div
             v-for="m in s.byMonth"
@@ -141,7 +140,7 @@ function monthMax(): number {
           >
             <div class="relative w-full">
               <div
-                class="mx-auto w-full rounded-t bg-gradient-to-t from-[#32f08c]/70 to-[#60f2bd]"
+                class="mx-auto w-full rounded-t bg-neutral-800"
                 :style="{
                   height: m.count ? `${Math.max(6, Math.round((m.count / monthMax()) * 110))}px` : '2px',
                   opacity: m.count ? 1 : 0.25,
@@ -149,12 +148,12 @@ function monthMax(): number {
               />
               <span
                 v-if="m.count"
-                class="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-full whitespace-nowrap font-mono text-[9px] text-[#60f2bd] opacity-0 transition-opacity group-hover:opacity-100"
+                class="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-full whitespace-nowrap font-mono text-[9px] text-neutral-600 opacity-0 transition-opacity group-hover:opacity-100"
               >
                 {{ m.count }}
               </span>
             </div>
-            <span class="font-mono text-[9.5px] text-[rgba(245,249,254,0.35)]">
+            <span class="font-mono text-[9.5px] text-neutral-400">
               {{ m.month.slice(5) }}
             </span>
           </div>
@@ -163,8 +162,8 @@ function monthMax(): number {
 
       <!-- 转化漏斗 -->
       <section class="card-glass mt-4 p-5">
-        <div class="mb-1 text-[13px] font-semibold text-[#f5f9fe]">转化漏斗</div>
-        <div class="mb-4 text-[11.5px] text-[rgba(245,249,254,0.4)]">
+        <div class="mb-1 text-[13px] font-semibold text-neutral-900">转化漏斗</div>
+        <div class="mb-4 text-[11.5px] text-neutral-400">
           各阶段"曾经到达"的投递数（含终态），可见"死在哪个环节"
         </div>
         <FunnelBars :rows="funnel" highlight-label="Offer" />

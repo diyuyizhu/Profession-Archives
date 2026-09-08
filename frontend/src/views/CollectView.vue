@@ -85,6 +85,7 @@ function submit(): void {
     apply_method: form.value.apply_method || undefined,
     status: form.value.applied ? 'applied' : 'backlog',
     tags: parseTags(form.value.tagsText),
+    groups: [],
     notes: form.value.notes.trim(),
     applied_at:
       form.value.applied_at || (form.value.applied ? localToday() : undefined),
@@ -106,7 +107,6 @@ function submit(): void {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-2xl px-6 pb-16">
       <!-- 头部 -->
@@ -119,8 +119,8 @@ function submit(): void {
         <div class="flex items-start gap-3">
           <span class="text-lg">🔗</span>
           <div>
-            <div class="text-[13px] font-semibold text-[#f5f9fe]">URL 直采</div>
-            <div class="mt-0.5 text-[11.5px] text-[rgba(245,249,254,0.45)]">
+            <div class="text-[13px] font-semibold text-neutral-900">URL 直采</div>
+            <div class="mt-0.5 text-[11.5px] text-neutral-500">
               粘贴 URL，后端抓取标题与 JD
             </div>
           </div>
@@ -128,8 +128,8 @@ function submit(): void {
         <div class="flex items-start gap-3">
           <span class="text-lg">🧩</span>
           <div>
-            <div class="text-[13px] font-semibold text-[#f5f9fe]">插件采集</div>
-            <div class="mt-0.5 text-[11.5px] text-[rgba(245,249,254,0.45)]">
+            <div class="text-[13px] font-semibold text-neutral-900">插件采集</div>
+            <div class="mt-0.5 text-[11.5px] text-neutral-500">
               岗位页点插件一键入库（D 模块）
             </div>
           </div>
@@ -137,8 +137,8 @@ function submit(): void {
         <div class="flex items-start gap-3">
           <span class="text-lg">✍️</span>
           <div>
-            <div class="text-[13px] font-semibold text-[#f5f9fe]">手动录入</div>
-            <div class="mt-0.5 text-[11.5px] text-[rgba(245,249,254,0.45)]">
+            <div class="text-[13px] font-semibold text-neutral-900">手动录入</div>
+            <div class="mt-0.5 text-[11.5px] text-neutral-500">
               下方表单直接填写
             </div>
           </div>
@@ -146,9 +146,9 @@ function submit(): void {
       </section>
 
       <!-- 邮箱导入 -->
-      <section class="card-glass mb-6 p-4" style="backdrop-filter: blur(28px) saturate(1.6)">
+      <section class="card-glass mb-6 p-4">
         <details :open="showEmailImport" @toggle="showEmailImport = ($event.target as HTMLDetailsElement).open">
-          <summary class="cursor-pointer text-[13px] font-medium text-[#32f08c]">
+          <summary class="cursor-pointer text-[13px] font-medium text-neutral-900">
             📧 从招聘邮件导入（粘贴邮件内容 → AI 预填看板）
           </summary>
           <div class="mt-3 space-y-3">
@@ -159,19 +159,19 @@ function submit(): void {
             />
             <div class="flex items-center gap-2">
               <SecondaryButton :disabled="!emailText.trim()" @click="parseEmail">解析邮件</SecondaryButton>
-              <span v-if="emailNote" class="text-[11.5px] text-[#fbbf24]">{{ emailNote }}</span>
+              <span v-if="emailNote" class="text-[11.5px] text-neutral-600">{{ emailNote }}</span>
             </div>
 
             <!-- 解析结果 -->
-            <div v-if="emailResult" class="rounded-lg border border-[rgba(50,240,140,0.2)] bg-[rgba(50,240,140,0.05)] p-3">
+            <div v-if="emailResult" class="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
               <div class="flex flex-wrap gap-x-4 gap-y-1 text-[12.5px]">
-                <span>公司：<b class="text-[#f5f9fe]">{{ emailResult.company || '—' }}</b></span>
-                <span>岗位：<b class="text-[#f5f9fe]">{{ emailResult.title || '—' }}</b></span>
-                <span>日期：<b class="text-[#f5f9fe]">{{ emailResult.date || '—' }}{{ emailResult.time ? ' ' + emailResult.time : '' }}</b></span>
-                <span>平台：<b class="text-[#f5f9fe]">{{ emailResult.platform || '—' }}</b></span>
-                <span>置信度：<b class="text-[#f5f9fe]">{{ Math.round(emailResult.confidence * 100) }}%</b></span>
+                <span>公司：<b class="text-neutral-900">{{ emailResult.company || '—' }}</b></span>
+                <span>岗位：<b class="text-neutral-900">{{ emailResult.title || '—' }}</b></span>
+                <span>日期：<b class="text-neutral-900">{{ emailResult.date || '—' }}{{ emailResult.time ? ' ' + emailResult.time : '' }}</b></span>
+                <span>平台：<b class="text-neutral-900">{{ emailResult.platform || '—' }}</b></span>
+                <span>置信度：<b class="text-neutral-900">{{ Math.round(emailResult.confidence * 100) }}%</b></span>
               </div>
-              <div v-if="emailResult.lines.length" class="mt-2 space-y-0.5 text-[11.5px] text-[rgba(245,249,254,0.5)]">
+              <div v-if="emailResult.lines.length" class="mt-2 space-y-0.5 text-[11.5px] text-neutral-500">
                 <div v-for="(l, i) in emailResult.lines" :key="i">▸ {{ l }}</div>
               </div>
               <div class="mt-3 flex justify-end">
@@ -183,32 +183,32 @@ function submit(): void {
       </section>
 
       <!-- 表单 -->
-      <section class="card-glass p-6" style="backdrop-filter: blur(28px) saturate(1.6)">
+      <section class="card-glass p-6">
         <form class="space-y-4" @submit.prevent="submit">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">公司 *</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">公司 *</span>
               <input v-model="form.company" class="input-trae" placeholder="招聘方公司名称" />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">岗位 *</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">岗位 *</span>
               <input v-model="form.title" class="input-trae" placeholder="如：Web 安全工程师" />
             </label>
           </div>
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">渠道</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">渠道</span>
               <input v-model="form.channel" class="input-trae" placeholder="官网 / BOSS 直聘 / 内推…" />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">岗位 URL</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">岗位 URL</span>
               <input v-model="form.url" class="input-trae" placeholder="https://…" />
             </label>
           </div>
 
           <label class="block">
-            <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">
+            <span class="mb-1.5 block text-xs text-neutral-500">
               JD 全文（自动入库 · 供 B3 匹配与复盘）
             </span>
             <textarea
@@ -220,18 +220,18 @@ function submit(): void {
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">标签（逗号分隔）</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">标签（逗号分隔）</span>
               <input v-model="form.tagsText" class="input-trae" placeholder="Web安全, 渗透测试" />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">备注</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">备注</span>
               <input v-model="form.notes" class="input-trae" placeholder="内推人、联系人…" />
             </label>
           </div>
 
           <!-- 投递方式 -->
           <div>
-            <div class="mb-2 text-xs text-[rgba(245,249,254,0.55)]">
+            <div class="mb-2 text-xs text-neutral-500">
               投递方式（决定下一步动作：插件填充 / 简历模板 / 邮箱导入）
             </div>
             <div class="flex flex-wrap gap-2">
@@ -242,15 +242,15 @@ function submit(): void {
                 class="rounded-lg border px-3 py-1.5 text-[12px] transition-colors"
                 :class="
                   form.apply_method === m
-                    ? 'border-[rgba(50,240,140,0.5)] bg-[rgba(50,240,140,0.1)] text-[#32f08c]'
-                    : 'border-[rgba(255,255,255,0.1)] text-[rgba(245,249,254,0.55)] hover:text-[#f5f9fe]'
+                    ? 'border-neutral-900 bg-neutral-100 text-neutral-900'
+                    : 'border-neutral-300 text-neutral-500 hover:text-neutral-900'
                 "
                 @click="form.apply_method = m"
               >
                 {{ APPLY_METHOD_LABELS[m] }}
               </button>
             </div>
-            <div v-if="form.apply_method" class="mt-2 text-[11.5px] leading-relaxed text-[rgba(245,249,254,0.5)]">
+            <div v-if="form.apply_method" class="mt-2 text-[11.5px] leading-relaxed text-neutral-500">
               {{ APPLY_METHOD_DESC[form.apply_method] }}
               <span v-if="form.apply_method === 'official_form'"> · 保存后可去「特化简历」生成对应模板草稿，或调插件填充</span>
               <span v-if="form.apply_method === 'email'"> · 上方「邮箱导入」可一键预填本表单</span>
@@ -260,14 +260,14 @@ function submit(): void {
 
           <!-- 直接标记已投 -->
           <label class="flex cursor-pointer items-center gap-3">
-            <input v-model="form.applied" type="checkbox" class="h-4 w-4 accent-[#32f08c]" />
-            <span class="text-[13px] text-[rgba(245,249,254,0.75)]">
+            <input v-model="form.applied" type="checkbox" class="h-4 w-4 accent-neutral-900" />
+            <span class="text-[13px] text-neutral-700">
               已投出（直接标记「已投」，否则进入备选池）
             </span>
           </label>
 
           <!-- 实时校验 -->
-          <div class="min-h-[16px] text-[11px] text-[rgba(245,249,254,0.3)]">
+          <div class="min-h-[16px] text-[11px] text-neutral-400">
             {{
               form.company.trim() && form.title.trim()
                 ? ''
@@ -279,7 +279,7 @@ function submit(): void {
         <div
           v-if="feedback"
           class="text-[12px]"
-          :class="feedback.kind === 'ok' ? 'text-[#60f2bd]' : 'text-[#f87171]'"
+          :class="feedback.kind === 'ok' ? 'text-neutral-600' : 'text-red-600'"
         >
           {{ feedback.text }}
         </div>
@@ -297,7 +297,7 @@ function submit(): void {
       </section>
 
       <!-- 插件提示 -->
-      <div class="mt-4 text-center text-[11px] text-[rgba(245,249,254,0.3)]">
+      <div class="mt-4 text-center text-[11px] text-neutral-400">
         浏览器插件（岗位采集 + 表单填充）在模块 D 阶段接入 · 已登录站点的采集将自动复用浏览器会话
       </div>
     </div>

@@ -129,7 +129,6 @@ function exportPdf(): void {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-4xl px-6 pb-16">
       <PageHeader code="B3" title="特化简历" desc="按 JD 匹配度重排经历 · 生成定制 summary">
@@ -137,43 +136,43 @@ function exportPdf(): void {
       </PageHeader>
 
       <!-- 选投递 -->
-      <section class="card-glass p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+      <section class="card-glass p-5">
         <div class="flex flex-wrap items-center gap-3">
-          <span class="text-[12.5px] text-[rgba(245,249,254,0.5)]">针对投递：</span>
+          <span class="text-[12.5px] text-neutral-500">针对投递：</span>
           <select v-model="pickedId" class="input-trae h-9 w-auto min-w-[220px] appearance-none text-[12.5px]">
             <option :value="null" disabled>选择有 JD 的投递…</option>
             <option v-for="app in jdApps" :key="app.id" :value="app.id">
               {{ app.company }} · {{ app.title }}
             </option>
           </select>
-          <span v-if="!jdApps.length" class="text-[11.5px] text-[rgba(245,249,254,0.35)]">
+          <span v-if="!jdApps.length" class="text-[11.5px] text-neutral-400">
             暂无带 JD 的投递，先采集岗位并填写 JD
           </span>
-          <span v-else class="text-[11.5px] text-[rgba(245,249,254,0.35)]">
+          <span v-else class="text-[11.5px] text-neutral-400">
             经历将按与 JD 的关键词重合度排序
           </span>
         </div>
 
-        <div v-if="feedback" class="mt-3 text-[12.5px] text-[#60f2bd]">✓ {{ feedback }}</div>
+        <div v-if="feedback" class="mt-3 text-[12.5px] text-neutral-600">✓ {{ feedback }}</div>
       </section>
 
       <!-- 草稿 -->
-      <section v-if="draft" class="card-glass mt-5 p-5" style="backdrop-filter: blur(28px) saturate(1.6)">
+      <section v-if="draft" class="card-glass mt-5 p-5">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <span class="text-[13px] font-semibold text-[#f5f9fe]">
+          <span class="text-[13px] font-semibold text-neutral-900">
             草稿 · {{ picked?.company }} {{ picked?.title }}
           </span>
-          <span class="text-[11px] text-[rgba(245,249,254,0.35)]">可编辑后复制 / 下载</span>
+          <span class="text-[11px] text-neutral-400">可编辑后复制 / 下载</span>
         </div>
 
         <textarea v-model="draft" class="input-trae min-h-[420px] resize-y py-3 font-mono text-[12.5px] leading-relaxed" />
 
         <!-- 定制 summary 独立展示 -->
-        <div v-if="summary" class="mt-3 rounded-lg border border-[rgba(50,240,140,0.15)] bg-[rgba(50,240,140,0.04)] p-3">
-          <div class="mb-1 text-[11px] font-medium tracking-widest text-[rgba(245,249,254,0.4)]">
+        <div v-if="summary" class="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+          <div class="mb-1 text-[11px] font-medium tracking-widest text-neutral-400">
             定制个人简介（已内置在草稿「个人简介」段）
           </div>
-          <p class="whitespace-pre-wrap text-[12.5px] leading-relaxed text-[rgba(245,249,254,0.7)]">
+          <p class="whitespace-pre-wrap text-[12.5px] leading-relaxed text-neutral-700">
             {{ summary }}
           </p>
         </div>
@@ -182,7 +181,7 @@ function exportPdf(): void {
           <SecondaryButton @click="copy">复制 Markdown</SecondaryButton>
           <SecondaryButton @click="download">下载 .md</SecondaryButton>
           <SecondaryButton @click="exportPdf">导出 PDF（打印）</SecondaryButton>
-          <span class="text-[11.5px] text-[rgba(245,249,254,0.35)]">
+          <span class="text-[11.5px] text-neutral-400">
             PDF 由浏览器打印生成 · Word 后续接入
           </span>
         </div>
@@ -193,8 +192,8 @@ function exportPdf(): void {
         class="card-glass mt-5 flex flex-col items-center gap-2 px-5 py-14 text-center"
       >
         <span class="text-3xl">📄</span>
-        <div class="text-[13px] text-[rgba(245,249,254,0.6)]">选择一个投递，生成针对其 JD 的特化简历草稿</div>
-        <div class="text-[11.5px] text-[rgba(245,249,254,0.35)]">
+        <div class="text-[13px] text-neutral-600">选择一个投递，生成针对其 JD 的特化简历草稿</div>
+        <div class="text-[11.5px] text-neutral-400">
           经历按 JD 关键词重合度排序 · 定制 summary · Markdown 导出
         </div>
       </div>

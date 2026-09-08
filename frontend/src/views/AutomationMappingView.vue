@@ -76,7 +76,6 @@ function saveAdd(): void {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-3xl px-6 pb-16">
       <PageHeader code="D4" title="字段映射" desc="按站点记忆表单字段 → 档案字段的对应关系">
@@ -84,8 +83,8 @@ function saveAdd(): void {
       </PageHeader>
 
       <!-- 说明 -->
-      <div class="card-glass mb-5 p-4 text-[12px] leading-relaxed text-[rgba(245,249,254,0.45)]">
-        <div class="mb-1 font-medium text-[rgba(245,249,254,0.7)]">如何工作</div>
+      <div class="card-glass mb-5 p-4 text-[12px] leading-relaxed text-neutral-500">
+        <div class="mb-1 font-medium text-neutral-700">如何工作</div>
         插件识别官网投递表单时，先用内置规则匹配字段名 / id / label；命中率不足时你在插件 popup 手动指定，
         映射会按站点（origin）记住并同步到这里 —— 下次访问同一站点自动复用。
       </div>
@@ -96,8 +95,8 @@ function saveAdd(): void {
         class="card-glass flex flex-col items-center justify-center gap-2 px-5 py-14 text-center"
       >
         <span class="text-3xl">🔗</span>
-        <div class="text-[13px] text-[rgba(245,249,254,0.6)]">还没有字段映射</div>
-        <div class="text-[11.5px] text-[rgba(245,249,254,0.35)]">
+        <div class="text-[13px] text-neutral-600">还没有字段映射</div>
+        <div class="text-[11.5px] text-neutral-400">
           可从插件手动指定后同步，或先手动新增常用站点映射
         </div>
       </div>
@@ -107,11 +106,11 @@ function saveAdd(): void {
         <section v-for="[origin, list] in groups" :key="origin" class="card-glass p-5">
           <div class="mb-3 flex items-center justify-between">
             <div class="min-w-0">
-              <div class="truncate text-[13.5px] font-semibold text-[#f5f9fe]">{{ origin }}</div>
-              <div class="text-[11px] text-[rgba(245,249,254,0.35)]">{{ list.length }} 条映射</div>
+              <div class="truncate text-[13.5px] font-semibold text-neutral-900">{{ origin }}</div>
+              <div class="text-[11px] text-neutral-400">{{ list.length }} 条映射</div>
             </div>
             <button
-              class="shrink-0 text-[11.5px] text-[rgba(245,249,254,0.4)] hover:text-[#f87171]"
+              class="shrink-0 text-[11.5px] text-neutral-400 hover:text-red-600"
               @click="store.clearOrigin(origin)"
             >
               清空此站点
@@ -121,7 +120,7 @@ function saveAdd(): void {
           <div class="overflow-x-auto">
             <table class="w-full text-left">
               <thead>
-                <tr class="border-b border-[rgba(255,255,255,0.08)] text-[11px] text-[rgba(245,249,254,0.4)]">
+                <tr class="border-b border-neutral-200 text-[11px] text-neutral-400">
                   <th class="py-2 pr-3 font-medium">表单控件（name / id）</th>
                   <th class="py-2 pr-3 font-medium">控件类型</th>
                   <th class="py-2 pr-3 font-medium">档案字段</th>
@@ -129,21 +128,21 @@ function saveAdd(): void {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="m in list" :key="m.id" class="border-b border-[rgba(255,255,255,0.05)] last:border-0">
-                  <td class="py-2.5 pr-3 font-mono text-[12px] text-[#f5f9fe]">
-                    {{ m.field_key }}<span v-if="m.field_label" class="ml-1 text-[10.5px] text-[rgba(245,249,254,0.35)]">{{ m.field_label }}</span>
+                <tr v-for="m in list" :key="m.id" class="border-b border-neutral-200 last:border-0">
+                  <td class="py-2.5 pr-3 font-mono text-[12px] text-neutral-900">
+                    {{ m.field_key }}<span v-if="m.field_label" class="ml-1 text-[10.5px] text-neutral-400">{{ m.field_label }}</span>
                   </td>
-                  <td class="py-2.5 pr-3 text-[12px] text-[rgba(245,249,254,0.5)]">
+                  <td class="py-2.5 pr-3 text-[12px] text-neutral-500">
                     {{ m.control_type ? CONTROL_LABELS[m.control_type] : '—' }}
                   </td>
                   <td class="py-2.5 pr-3">
-                    <span class="rounded-full border border-[rgba(50,240,140,0.3)] bg-[rgba(50,240,140,0.08)] px-2 py-0.5 text-[11px] text-[#60f2bd]">
+                    <span class="rounded-full border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">
                       {{ AUTOMATION_TARGET_LABELS[m.target_field] }}
                     </span>
                   </td>
                   <td class="py-2.5">
                     <button
-                      class="text-[11.5px] text-[rgba(245,249,254,0.4)] hover:text-[#f87171]"
+                      class="text-[11.5px] text-neutral-400 hover:text-red-600"
                       @click="store.removeMapping(m.id)"
                     >
                       删除
@@ -160,23 +159,23 @@ function saveAdd(): void {
       <Modal v-if="showAdd" title="新增字段映射" max-width="max-w-md" @close="showAdd = false">
         <form class="space-y-4" @submit.prevent="saveAdd">
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">站点 Origin *</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">站点 Origin *</span>
               <input v-model="form.origin" class="input-trae" list="fm-origins" placeholder="如：https://jobs.example.com" />
               <datalist id="fm-origins">
                 <option v-for="o in store.origins" :key="o" :value="o" />
               </datalist>
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">表单控件 name / id *</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">表单控件 name / id *</span>
               <input v-model="form.field_key" class="input-trae" placeholder="如：fullname / phone / input-email" />
             </label>
             <div class="grid grid-cols-2 gap-4">
               <label class="block">
-                <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">控件标签（可选）</span>
+                <span class="mb-1.5 block text-xs text-neutral-500">控件标签（可选）</span>
                 <input v-model="form.field_label" class="input-trae" placeholder="如：联系电话" />
               </label>
               <label class="block">
-                <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">控件类型</span>
+                <span class="mb-1.5 block text-xs text-neutral-500">控件类型</span>
                 <select v-model="form.control_type" class="input-trae appearance-none">
                   <option v-for="c in AUTOMATION_CONTROL_TYPES" :key="c" :value="c">
                     {{ CONTROL_LABELS[c] }}
@@ -185,7 +184,7 @@ function saveAdd(): void {
               </label>
             </div>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">映射到档案字段</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">映射到档案字段</span>
               <select v-model="form.target_field" class="input-trae appearance-none">
                 <option v-for="f in AUTOMATION_TARGET_FIELDS" :key="f" :value="f">
                   {{ AUTOMATION_TARGET_LABELS[f] }}

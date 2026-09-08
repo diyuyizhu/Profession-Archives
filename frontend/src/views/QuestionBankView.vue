@@ -94,7 +94,6 @@ function removeItem(item: QuestionBankItem): void {
 
 <template>
   <div class="relative min-h-full">
-    <div class="aura-layer" aria-hidden="true" />
 
     <div class="relative z-1 mx-auto max-w-4xl px-6 pb-16">
       <!-- 头部 -->
@@ -103,16 +102,16 @@ function removeItem(item: QuestionBankItem): void {
       </PageHeader>
 
       <!-- 筛选 -->
-      <section class="card-glass mb-6 space-y-3 p-4" style="backdrop-filter: blur(28px) saturate(1.6)">
+      <section class="card-glass mb-6 space-y-3 p-4">
         <input v-model="search" class="input-trae" placeholder="搜索题目 / 答案 / 标签…" />
         <div class="flex flex-wrap items-center gap-2">
-          <span class="text-[11px] text-[rgba(245,249,254,0.4)]">分类</span>
+          <span class="text-[11px] text-neutral-400">分类</span>
           <button
             class="rounded-full border px-2.5 py-0.5 text-[11.5px] transition-colors"
             :class="
               activeCategory === null
-                ? 'border-[rgba(50,240,140,0.5)] bg-[rgba(50,240,140,0.1)] text-[#32f08c]'
-                : 'border-[rgba(255,255,255,0.1)] bg-[rgba(237,239,242,0.04)] text-[rgba(245,249,254,0.55)] hover:text-[#f5f9fe]'
+                ? 'border-neutral-900 bg-neutral-100 text-neutral-900'
+                : 'border-neutral-300 bg-neutral-50 text-neutral-500 hover:text-neutral-900'
             "
             @click="activeCategory = null"
           >
@@ -124,8 +123,8 @@ function removeItem(item: QuestionBankItem): void {
             class="rounded-full border px-2.5 py-0.5 text-[11.5px] transition-colors"
             :class="
               activeCategory === c
-                ? 'border-[rgba(50,240,140,0.5)] bg-[rgba(50,240,140,0.1)] text-[#32f08c]'
-                : 'border-[rgba(255,255,255,0.1)] bg-[rgba(237,239,242,0.04)] text-[rgba(245,249,254,0.55)] hover:text-[#f5f9fe]'
+                ? 'border-neutral-900 bg-neutral-100 text-neutral-900'
+                : 'border-neutral-300 bg-neutral-50 text-neutral-500 hover:text-neutral-900'
             "
             @click="activeCategory = activeCategory === c ? null : c"
           >
@@ -133,15 +132,15 @@ function removeItem(item: QuestionBankItem): void {
           </button>
         </div>
         <div v-if="store.tags.length" class="flex flex-wrap items-center gap-2">
-          <span class="text-[11px] text-[rgba(245,249,254,0.4)]">标签</span>
+          <span class="text-[11px] text-neutral-400">标签</span>
           <button
             v-for="t in store.tags"
             :key="t"
             class="rounded px-1.5 py-0.5 text-[11px] transition-colors"
             :class="
               activeTag === t
-                ? 'bg-[rgba(50,240,140,0.15)] text-[#32f08c]'
-                : 'bg-[rgba(237,239,242,0.05)] text-[rgba(245,249,254,0.5)] hover:text-[#f5f9fe]'
+                ? 'bg-neutral-200 text-neutral-900'
+                : 'bg-neutral-50 text-neutral-500 hover:text-neutral-900'
             "
             @click="activeTag = activeTag === t ? null : t"
           >
@@ -154,24 +153,24 @@ function removeItem(item: QuestionBankItem): void {
       <section v-if="groups.length" class="space-y-6">
         <div v-for="group in groups" :key="group.category">
           <div class="mb-2 flex items-baseline gap-2">
-            <span class="heading-tight text-[14px] text-[#f5f9fe]">{{ group.category }}</span>
-            <span class="text-[11px] text-[rgba(245,249,254,0.35)]">{{ group.items.length }} 题</span>
+            <span class="heading-tight text-[14px] text-neutral-900">{{ group.category }}</span>
+            <span class="text-[11px] text-neutral-400">{{ group.items.length }} 题</span>
           </div>
           <div class="space-y-2.5">
             <div v-for="item in group.items" :key="item.id" class="card-glass p-4">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <div class="flex flex-wrap items-center gap-2">
-                    <span class="text-[13.5px] font-medium text-[#f5f9fe]">{{ item.question }}</span>
+                    <span class="text-[13.5px] font-medium text-neutral-900">{{ item.question }}</span>
                     <span
-                      class="rounded-full border border-[rgba(255,255,255,0.1)] px-1.5 py-px text-[10px] text-[rgba(245,249,254,0.4)]"
+                      class="rounded-full border border-neutral-300 px-1.5 py-px text-[10px] text-neutral-400"
                       :title="`难度：${DIFF_LABELS[item.difficulty] ?? ''}`"
                     >
                       {{ diffDots(item.difficulty) }}
                     </span>
                     <span
                       v-if="item.source === 'interview'"
-                      class="rounded-full border border-[rgba(56,189,248,0.25)] bg-[rgba(56,189,248,0.06)] px-1.5 py-px text-[10px] text-[#38bdf8]"
+                      class="rounded-full border border-neutral-300 bg-neutral-50 px-1.5 py-px text-[10px] text-neutral-600"
                     >
                       面试沉淀
                     </span>
@@ -180,27 +179,27 @@ function removeItem(item: QuestionBankItem): void {
                     <span
                       v-for="t in item.tags"
                       :key="t"
-                      class="rounded bg-[rgba(237,239,242,0.06)] px-1.5 py-0.5 text-[10.5px] text-[rgba(245,249,254,0.45)]"
+                      class="rounded bg-neutral-100 px-1.5 py-0.5 text-[10.5px] text-neutral-500"
                     >
                       #{{ t }}
                     </span>
                   </div>
-                  <div v-if="expanded.has(item.id) && item.answer" class="mt-2.5 rounded-lg border border-[rgba(255,255,255,0.07)] bg-[rgba(237,239,242,0.03)] p-3">
-                    <div class="mb-1 text-[10.5px] font-medium tracking-widest text-[rgba(245,249,254,0.35)]">我的答案</div>
-                    <p class="whitespace-pre-wrap text-[12.5px] leading-relaxed text-[rgba(245,249,254,0.65)]">
+                  <div v-if="expanded.has(item.id) && item.answer" class="mt-2.5 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                    <div class="mb-1 text-[10.5px] font-medium tracking-widest text-neutral-400">我的答案</div>
+                    <p class="whitespace-pre-wrap text-[12.5px] leading-relaxed text-neutral-600">
                       {{ item.answer }}
                     </p>
                   </div>
                 </div>
                 <div class="flex shrink-0 items-center gap-1.5">
                   <button
-                    class="rounded px-2 py-1 text-[11.5px] text-[rgba(245,249,254,0.45)] transition-colors hover:text-[#32f08c]"
+                    class="rounded px-2 py-1 text-[11.5px] text-neutral-500 transition-colors hover:text-neutral-900"
                     @click="toggleExpand(item.id)"
                   >
                     {{ expanded.has(item.id) ? '收起' : '答案' }}
                   </button>
                   <button
-                    class="rounded px-2 py-1 text-[11.5px] text-[rgba(245,249,254,0.45)] transition-colors hover:text-[#f87171]"
+                    class="rounded px-2 py-1 text-[11.5px] text-neutral-500 transition-colors hover:text-red-600"
                     @click="removeItem(item)"
                   >
                     删除
@@ -214,7 +213,7 @@ function removeItem(item: QuestionBankItem): void {
 
       <div
         v-else
-        class="card-glass px-5 py-12 text-center text-[12.5px] text-[rgba(245,249,254,0.35)]"
+        class="card-glass px-5 py-12 text-center text-[12.5px] text-neutral-400"
       >
         {{ search || activeCategory || activeTag ? '没有匹配的题目' : '题库还是空的，记录面试或手动录入' }}
       </div>
@@ -223,11 +222,11 @@ function removeItem(item: QuestionBankItem): void {
       <Modal v-if="showAdd" title="录入题目" @close="showAdd = false">
         <form class="space-y-4" @submit.prevent="saveAdd">
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">题目 *</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">题目 *</span>
               <input v-model="addForm.question" class="input-trae" placeholder="面试官问了什么？" />
             </label>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">我的答案</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">我的答案</span>
               <textarea
                 v-model="addForm.answer"
                 class="input-trae min-h-[100px] resize-y py-2.5"
@@ -236,14 +235,14 @@ function removeItem(item: QuestionBankItem): void {
             </label>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label class="block">
-                <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">分类</span>
+                <span class="mb-1.5 block text-xs text-neutral-500">分类</span>
                 <input v-model="addForm.category" class="input-trae" list="qb-categories" placeholder="如：网络安全" />
                 <datalist id="qb-categories">
                   <option v-for="c in store.categories" :key="c" :value="c" />
                 </datalist>
               </label>
               <label class="block">
-                <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">难度（1–5）</span>
+                <span class="mb-1.5 block text-xs text-neutral-500">难度（1–5）</span>
                 <select v-model.number="addForm.difficulty" class="input-trae appearance-none">
                   <option v-for="n in 5" :key="n" :value="n">
                     {{ n }} · {{ DIFF_LABELS[n] }}
@@ -252,7 +251,7 @@ function removeItem(item: QuestionBankItem): void {
               </label>
             </div>
             <label class="block">
-              <span class="mb-1.5 block text-xs text-[rgba(245,249,254,0.55)]">标签（逗号分隔）</span>
+              <span class="mb-1.5 block text-xs text-neutral-500">标签（逗号分隔）</span>
               <input v-model="addForm.tagsText" class="input-trae" placeholder="注入, XSS" />
             </label>
 
