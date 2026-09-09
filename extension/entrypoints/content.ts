@@ -1,7 +1,13 @@
 /**
  * content script：投递表单扫描 / 填充 / 高亮 / 人工确认 + 岗位采集。
  * 合规硬约束：不做自动提交、不破验证码、不绕过登录 —— 填充后由用户确认提交。
- * TODO：动态页面（React/Vue）用 MutationObserver 等待表单稳定；必填校验失败时提示。
+ *
+ * 两种识别模式（popup 切换）：
+ * - 关键词：本地规则（name/id/label 关键词）+ per-origin 映射记忆，纯离线
+ * - AI：把字段上下文发给桥，由桥内模型做语义映射，结果同样记忆复用
+ *
+ * 动态渲染页面：填充前用 MutationObserver 等待表单挂载（waitForForm），
+ * 避免 SPA 在 document_idle 之后才渲染导致的「0 个字段」。
  */
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -53,6 +59,36 @@ export default defineContentScript({
       return ''
     }
 
+    /** 可填充控件（排除隐藏域与按钮类，它们无法承载档案文本） */
+    function fillableControls(): NodeListOf<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> {
+      return document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+        'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]), textarea, select',
+      )
+    }
+
+    /**
+     * 等待表单挂载：SPA（React/Vue）常在 document_idle 之后才渲染表单。
+     * MutationObserver 监听 DOM，出现可填充控件或超时后返回。
+     */
+    function waitForForm(timeoutMs = 5000): Promise<boolean> {
+      if (fillableControls().length > 0) return Promise.resolve(true)
+      return new Promise((resolve) => {
+        let timer: ReturnType<typeof setTimeout>
+        const observer = new MutationObserver(() => {
+          if (fillableControls().length > 0) {
+            observer.disconnect()
+            clearTimeout(timer)
+            resolve(true)
+          }
+        })
+        timer = setTimeout(() => {
+          observer.disconnect()
+          resolve(false)
+        }, timeoutMs)
+        observer.observe(document.documentElement, { childList: true, subtree: true })
+      })
+    }
+
     function scanFields(): Array<{ el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; key: string; identity: string }> {
       const found: Array<{ el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; key: string; identity: string }> = []
       const els = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
@@ -63,6 +99,33 @@ export default defineContentScript({
         if (key) found.push({ el, key, identity: fieldIdentity(el) })
       }
       return found
+    }
+
+    /**
+     * 写入值并派发 input/change + 高亮。
+     * React 受控输入直接赋 .value 不会更新框架内部 state（值会被回滚），
+     * 必须走原型上的原生 setter 绕过 valueTracker —— 两种模式共用这一处。
+     */
+    function setControlValue(
+      el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
+      value: string,
+    ): boolean {
+      if (el instanceof HTMLSelectElement) {
+        const opt = Array.from(el.options).find((o) => o.value === value || o.text === value)
+        if (!opt) return false
+        el.value = opt.value
+      } else {
+        const proto =
+          el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
+        const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set
+        if (setter) setter.call(el, value)
+        else el.value = value
+      }
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+      el.style.outline = '2px solid #111827'
+      el.style.outlineOffset = '1px'
+      return true
     }
 
     /** 从后台拉取当前 origin 的已知字段映射（记忆） */
@@ -120,18 +183,8 @@ export default defineContentScript({
         const value = values[target]
         controlTypes.set(identity, el.tagName.toLowerCase() === 'select' ? 'select' : el.tagName.toLowerCase())
         if (!value) continue
-        const tag = el.tagName.toLowerCase()
-        if (tag === 'select') {
-          const opt = Array.from(el.options).find((o) => o.value === value || o.text === value)
-          if (opt) el.value = opt.value
-          else continue
-        } else {
-          el.value = value
-        }
-        el.dispatchEvent(new Event('input', { bubbles: true }))
-        el.dispatchEvent(new Event('change', { bubbles: true }))
-        el.style.outline = '2px solid #111827'
-        el.style.outlineOffset = '1px'
+        // 统一走 setControlValue（原生 setter），否则 React 受控输入会被回滚
+        if (!setControlValue(el, value)) continue
         filled.push(target)
         // 启发式命中且与记忆不同 → 学习上报
         if (!remembered.has(identity) && key && target === key) learned.push({ identity, target })
@@ -187,7 +240,7 @@ export default defineContentScript({
       return found
     }
 
-    /** 按目标字段写值到控件（排除特殊控件；React 受控输入用原生 setter 驱动） */
+    /** 按目标字段写值到控件（排除禁用 / 特殊控件，实际写入复用 setControlValue） */
     function fillByTarget(
       el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
       target: string,
@@ -195,29 +248,15 @@ export default defineContentScript({
     ): boolean {
       const value = values[target]
       if (!value) return false
-      const tag = el.tagName.toLowerCase()
       // 排除禁用 / 特殊控件（checkbox/radio/file 无法简单赋 value）
-      if ((el as HTMLInputElement).disabled) return false
-      if (tag === 'input') {
-        const type = (el as HTMLInputElement).type ?? ''
+      if (el instanceof HTMLInputElement) {
+        if (el.disabled) return false
+        const type = el.type ?? ''
         if (['checkbox', 'radio', 'file', 'hidden', 'submit', 'button', 'reset'].includes(type)) return false
+      } else if (el.disabled) {
+        return false
       }
-      if (tag === 'select') {
-        const opt = Array.from(el.options).find((o) => o.value === value || o.text === value)
-        if (!opt) return false
-        el.value = opt.value
-      } else {
-        // React 受控输入：直接设 .value 不会更新 React 内部 state，需走原生 value setter
-        const proto = tag === 'textarea' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
-        const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set
-        if (setter) setter.call(el, value)
-        else el.value = value
-      }
-      el.dispatchEvent(new Event('input', { bubbles: true }))
-      el.dispatchEvent(new Event('change', { bubbles: true }))
-      el.style.outline = '2px solid #111827'
-      el.style.outlineOffset = '1px'
-      return true
+      return setControlValue(el, value)
     }
 
     /** AI 模式填充：发字段上下文给后台 → 桥 AI 映射 → 按映射填充 */
@@ -314,6 +353,8 @@ export default defineContentScript({
             chrome.runtime.sendMessage({ type: 'GET_PROFILE' }, async (res) => {
               if (res?.profile) {
                 try {
+                  // SPA 可能尚未渲染表单：先等控件出现（最多 5s），再扫描
+                  await waitForForm()
                   const r = useAi
                     ? await fillFormAI(res.profile)
                     : fillForm(res.profile, await fetchMappings())

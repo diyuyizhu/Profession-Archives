@@ -1,13 +1,14 @@
 /**
- * background service worker：消息路由 + 本地桥（127.0.0.1）调用骨架。
+ * background service worker：消息路由 + 本地桥（127.0.0.1:8000）调用。
  *
- * TODO（服务端落地后实现）：
+ * 已实现（对齐 src-tauri/src/bridge.rs 的路由）：
  * - 配对：popup 粘贴配对码存 chrome.storage.local，请求带 Authorization: Bearer <token>
- * - 本地桥端点（见 server/src/app.ts）：
- *     GET  /api/automation/profile   读取当前档案（供填充）
- *     POST /api/automation/job       采集岗位回传
- *     POST /api/automation/application 投递结果回传
- *     POST/GET /api/automation/form-mapping 站点字段映射记忆
+ * - 本地桥端点：
+ *     GET       /api/automation/profile        读取当前档案（供填充）
+ *     POST      /api/automation/job            采集岗位回传
+ *     POST      /api/automation/application    投递结果回传
+ *     GET/POST  /api/automation/form-mapping   站点字段映射记忆（per-origin）
+ *     POST      /api/automation/ai/*           AI 模式：字段识别 / 岗位提取 / 简历生成
  */
 export default defineBackground(() => {
   const LOCAL_BRIDGE = 'http://127.0.0.1:8000'
@@ -30,13 +31,10 @@ export default defineBackground(() => {
    * 桌面采集（录系统声音）：chrome.desktopCapture 只能由扩展调用。
    * 返回 streamId 给 content script，content 用 getUserMedia({ chromeMediaSource: 'desktop' }) 取系统音频。
    */
-  function captureDesktop(withAudio: boolean, targetTabId?: number): Promise<string | null> {
+  function captureDesktop(withAudio: boolean): Promise<string | null> {
     return new Promise((resolve) => {
       const types: Array<'screen' | 'audio' | 'tab'> = withAudio ? ['screen', 'audio'] : ['screen']
-      const getStreamId = targetTabId
-        ? (cb: (id: string) => void) => chrome.desktopCapture.chooseDesktopMedia(types, targetTabId, (id) => cb(id))
-        : (cb: (id: string) => void) => chrome.desktopCapture.chooseDesktopMedia(types, (id) => cb(id))
-      getStreamId((streamId) => resolve(streamId || null))
+      chrome.desktopCapture.chooseDesktopMedia(types, (streamId) => resolve(streamId || null))
     })
   }
 

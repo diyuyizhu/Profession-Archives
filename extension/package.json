@@ -5,6 +5,7 @@
   "description": "Profession-Archives 浏览器插件（MV3）：连接本地档案，岗位采集 + 表单自动填充 + 投递回传。",
   "type": "module",
   "scripts": {
+    "postinstall": "wxt prepare",
     "dev": "wxt",
     "build": "wxt build",
     "zip": "wxt zip",

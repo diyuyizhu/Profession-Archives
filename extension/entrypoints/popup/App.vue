@@ -3,23 +3,47 @@
  * popup 面板：配对 + 采集岗位 + 填充投递表单 + 清除高亮。
  * 风格与主应用一致（经典黑白：白底 + 墨黑 + 灰阶）。
  */
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+
+const BRIDGE_BASE = 'http://127.0.0.1:8000'
 
 const pairingCode = ref('')
-const status = ref('未配对')
+const bridgeOnline = ref<boolean | null>(null)
 const actionMsg = ref('')
 const mode = ref<'keyword' | 'ai'>('keyword')
+
+/** 版本号从 manifest 读，避免和 package.json 版本脱节 */
+const version = chrome.runtime.getManifest().version
+
+const hasPairing = computed(() => Boolean(pairingCode.value.trim()))
+const bridgeLabel = computed(() =>
+  bridgeOnline.value === null ? '检测中…' : bridgeOnline.value ? '在线' : '离线（请启动桌面端）',
+)
 
 async function currentTabId(): Promise<number | undefined> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   return tab?.id
 }
 
+/** 探测本地桥是否在线（2 秒超时）—— 填充/采集失败最常见的原因就是桌面端没开 */
+async function checkBridge(): Promise<void> {
+  bridgeOnline.value = null
+  try {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 2000)
+    const res = await fetch(`${BRIDGE_BASE}/health`, { signal: ctrl.signal })
+    clearTimeout(timer)
+    bridgeOnline.value = res.ok
+  } catch {
+    bridgeOnline.value = false
+  }
+}
+
 onMounted(async () => {
   const stored = await chrome.storage.local.get(['pairingCode', 'mode'])
   pairingCode.value = stored.pairingCode ?? ''
   mode.value = stored.mode === 'ai' ? 'ai' : 'keyword'
-  status.value = pairingCode.value ? '已配对（本机）' : '未配对'
+  void checkBridge()
 })
 
 async function saveMode(m: 'keyword' | 'ai'): Promise<void> {
@@ -29,8 +53,8 @@ async function saveMode(m: 'keyword' | 'ai'): Promise<void> {
 
 async function savePairing(): Promise<void> {
   await chrome.storage.local.set({ pairingCode: pairingCode.value.trim() })
-  status.value = '已保存'
-  actionMsg.value = ''
+  actionMsg.value = '配对码已保存'
+  setTimeout(() => (actionMsg.value = ''), 2000)
 }
 
 function flash(msg: string): void {
@@ -109,7 +133,7 @@ async function clearFill(): Promise<void> {
     <!-- 头部 -->
     <div class="pa-header">
       <span class="pa-title">Profession-Archives 助手</span>
-      <span class="pa-version">v0.1</span>
+      <span class="pa-version">v{{ version }}</span>
     </div>
 
     <!-- 配对 -->
@@ -117,9 +141,18 @@ async function clearFill(): Promise<void> {
     <input id="pairing" v-model="pairingCode" class="pa-input" placeholder="粘贴配对码" />
     <div class="pa-row">
       <button class="pa-btn pa-btn-ghost" @click="savePairing">保存配对</button>
-      <span class="pa-status" :class="{ on: status !== '未配对' }">
+      <span class="pa-status" :class="{ on: hasPairing }">
         <i class="pa-dot" />
-        {{ status }}
+        {{ hasPairing ? '已配对' : '未配对' }}
+      </span>
+    </div>
+
+    <!-- 本地桥状态 -->
+    <div class="pa-row">
+      <span class="pa-label" style="margin-top: 0">本地桥 127.0.0.1:8000</span>
+      <span class="pa-status" :class="{ on: bridgeOnline === true }">
+        <i class="pa-dot" />
+        {{ bridgeLabel }}
       </span>
     </div>
 
