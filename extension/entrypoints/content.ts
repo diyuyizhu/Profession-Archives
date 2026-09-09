@@ -34,7 +34,13 @@ export default defineContentScript({
 
     /** 字段标识（用于 per-origin 映射记忆的 key；优先 name → id → label） */
     function fieldIdentity(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): string {
-      return (el.getAttribute('name') ?? '').trim() || el.id || el.closest('label')?.textContent?.trim() ?? ''
+      // 注意：?? 不能与 || 混用而不加括号（Babel/JS 语法错误），统一用 || 兜底空串
+      return (
+        (el.getAttribute('name') ?? '').trim() ||
+        el.id ||
+        el.closest('label')?.textContent?.trim() ||
+        ''
+      )
     }
 
     function fieldKeyOf(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): string {
