@@ -1,21 +1,45 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="classic">
+<html lang="zh-CN" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
     <!-- 内联钉死根背景，防止加载瞬间闪色 -->
     <style>
       html,
       body {
         background: #ffffff;
       }
+      html[data-theme='dark'],
+      html[data-theme='dark'] body {
+        background: #0b0f14;
+      }
     </style>
+    <!-- 首屏防闪：在样式加载前按 模式/系统/时段 解析皮肤 -->
+    <script>
+      (function () {
+        try {
+          var mode = localStorage.getItem('pa-theme-mode') || 'system'
+          var dark
+          if (mode === 'dark') dark = true
+          else if (mode === 'light') dark = false
+          else if (mode === 'schedule') {
+            var s = JSON.parse(localStorage.getItem('pa-theme-schedule') || '{}')
+            var toMin = function (t) { var p = String(t || '0:0').split(':'); return (+p[0] || 0) * 60 + (+p[1] || 0) }
+            var a = toMin(s.darkStart || '19:00'), b = toMin(s.darkEnd || '07:00')
+            var d = new Date(), cur = d.getHours() * 60 + d.getMinutes()
+            dark = a === b ? false : (a < b ? cur >= a && cur < b : cur >= a || cur < b)
+          } else dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        } catch (e) {}
+      })()
+    </script>
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23111827'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-weight='bold'%3EP%3C/text%3E%3C/svg%3E"
     />
-    <title>Profession-Archives · 生涯档案</title>
+    <title>Profession-Archives · 我的档案</title>
   </head>
   <body>
     <div id="app"></div>

@@ -6,8 +6,17 @@
  * 业务类型在 M1 档案领域实现时补齐，后续模块（B–F）按相同模式扩充。
  */
 
-/** 界面主题名（经典黑白，当前仅 Classic Mono 默认风） */
-export type ThemeName = 'classic'
+/** 解析后的实际皮肤（经典黑白：白天 / 深夜） */
+export type ThemeName = 'light' | 'dark'
+/** 皮肤模式：跟随系统 / 强制白天 / 强制深夜 / 定时切换 */
+export type ThemeMode = 'system' | 'light' | 'dark' | 'schedule'
+/** 定时切换配置（深夜时段，跨零点用 start > end 表示） */
+export interface ThemeSchedule {
+  /** 深夜开始 HH:mm */
+  darkStart: string
+  /** 深夜结束 HH:mm */
+  darkEnd: string
+}
 
 /** 功能模块元信息（对应 README 模块 A–F + A5 + 设置） */
 export interface ModuleMeta {
@@ -32,7 +41,7 @@ export const MODULES: ModuleMeta[] = [
   {
     key: 'archive',
     code: 'A',
-    title: '生涯档案',
+    title: '我的档案',
     desc: '原子化记录 · 简历素材库 · 生涯时间线',
     path: '/archive',
     priority: 'P0',

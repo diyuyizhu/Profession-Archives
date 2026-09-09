@@ -8,7 +8,7 @@ export default defineConfig({
   vite: () => ({ plugins: [vue()] }),
   manifest: {
     name: 'Profession-Archives 助手',
-    description: '连接本地生涯档案：采集岗位、自动填充官网投递表单、回传投递状态、桌面采集（系统音频）。',
+    description: '连接本地档案：采集岗位、自动填充官网投递表单、回传投递状态、桌面采集（系统音频）。',
     // 最小权限：storage + activeTab（当前页交互）+ desktopCapture（系统音频）；tabs 冗余已移除
     permissions: ['storage', 'activeTab', 'desktopCapture'],
     host_permissions: ['<all_urls>'],

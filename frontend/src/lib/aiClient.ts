@@ -1,43 +1,12 @@
 /**
  * 前端 AI 客户端：通过本地桥（127.0.0.1:8000）调用 AI 能力。
- * 桥要求配对 token，这里自动从桥获取（先试 /api/bridge/pairing，再试 server /api/automation/pairing）。
+ * 统一走 bridgeRequest：自动注入 Bearer token，401（token 轮换）时已内置清缓存重试。
  */
-import { BRIDGE_BASE, fetchPairingToken, clearCachedToken } from '@/lib/bridge'
+import { bridgeRequest } from '@/lib/bridge'
 
-/** 发起一次 AI 请求 */
-async function postAi<T>(path: string, payload: unknown, token: string): Promise<T> {
-  const res = await fetch(`${BRIDGE_BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(payload),
-  })
-  let data: { ok?: boolean; error?: string } & T
-  try {
-    data = (await res.json()) as { ok?: boolean; error?: string } & T
-  } catch {
-    throw new Error(`桥返回错误: HTTP ${res.status}`)
-  }
-  if (!res.ok || data.error) {
-    throw new Error(data.error ?? `桥返回错误: HTTP ${res.status}`)
-  }
-  return data
-}
-
-/** 调用桥 AI 端点（401 时清缓存 token 重试一次） */
+/** 调用桥 AI 端点（鉴权 / 401 重试由 bridgeRequest 内置） */
 async function callAi<T>(path: string, payload: unknown): Promise<T> {
-  let token = await fetchPairingToken()
-  if (!token) throw new Error('本地桥未运行（请启动桌面应用）')
-  try {
-    return await postAi<T>(path, payload, token)
-  } catch (e) {
-    // token 可能已轮换（桥重建）：清缓存重试一次
-    if (e instanceof Error && e.message.includes('401')) {
-      clearCachedToken()
-      token = await fetchPairingToken()
-      if (token) return await postAi<T>(path, payload, token)
-    }
-    throw e
-  }
+  return bridgeRequest<T>(path, { method: 'POST', body: JSON.stringify(payload) })
 }
 
 /** 生成特化简历：传 JD + 档案文本 */

@@ -157,7 +157,7 @@ function snippetOf(md: string, max = 56): string {
               v-if="!entries.length"
               class="px-3 py-10 text-center text-[12px] text-neutral-400"
             >
-              档案里还没有日记/成就/里程碑，先去「生涯档案」记录
+              档案里还没有日记/成就/里程碑，先去「我的档案」记录
             </div>
           </div>
         </section>

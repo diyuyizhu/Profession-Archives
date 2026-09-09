@@ -10,9 +10,9 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { useApplicationStore } from '@/stores/application'
+import { bridgeRequest } from '@/lib/bridge'
 
 const KEY = 'pa-bridge-sync-mode-v1'
-const BRIDGE_BASE = 'http://127.0.0.1:8000'
 
 export type SyncMode = 'direct' | 'select'
 
@@ -72,14 +72,12 @@ export const useBridgeSyncStore = defineStore('bridgeSync', () => {
     return `${item.type}-${index}`
   }
 
-  /** 拉取 inbox */
+  /** 拉取 inbox（bridgeRequest 自动带 Bearer token；错误上抛由调用方提示） */
   async function fetchInbox(): Promise<BridgeInboxItem[]> {
     const ctrl = new AbortController()
     const t = setTimeout(() => ctrl.abort(), 5000)
     try {
-      const res = await fetch(`${BRIDGE_BASE}/api/bridge/inbox`, { signal: ctrl.signal })
-      if (!res.ok) throw new Error(`桥返回错误: ${res.status}`)
-      const items = (await res.json()) as BridgeInboxItem[]
+      const items = await bridgeRequest<BridgeInboxItem[]>('/api/bridge/inbox', { signal: ctrl.signal })
       inboxItems.value = items
       return items
     } finally {
@@ -146,10 +144,10 @@ export const useBridgeSyncStore = defineStore('bridgeSync', () => {
     return { jobCount, appCount, dropped }
   }
 
-  /** 清空 inbox */
+  /** 清空 inbox（bridgeRequest 自动带 token；失败静默，不阻塞同步流程） */
   async function clearInbox(): Promise<void> {
     try {
-      await fetch(`${BRIDGE_BASE}/api/bridge/inbox/clear`, { method: 'POST' })
+      await bridgeRequest('/api/bridge/inbox/clear', { method: 'POST' })
     } catch {
       /* ignore */
     }

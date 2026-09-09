@@ -13,12 +13,12 @@ const routes = [
     meta: { title: '主控台' },
   },
 
-  /* ── 生涯档案（A）：单页聚合（录入 + 时间线 + 聚合名片） ── */
+  /* ── 我的档案（A）：单页聚合（录入 + 时间线 + 聚合名片） ── */
   {
     path: '/archive',
     name: 'archive',
     component: () => import('../views/ArchiveView.vue'),
-    meta: { title: '生涯档案', code: 'A', milestone: 'M1' },
+    meta: { title: '我的档案', code: 'A', milestone: 'M1' },
   },
 
   /* ── 投递看板（B） ── */
@@ -205,6 +205,12 @@ const routes = [
     name: 'settings-ai',
     component: () => import('../views/SettingsAIView.vue'),
     meta: { title: 'AI 配置', code: 'E1', milestone: 'M2' },
+  },
+  {
+    path: '/settings/appearance',
+    name: 'settings-appearance',
+    component: () => import('../views/SettingsAppearanceView.vue'),
+    meta: { title: '外观', code: '—', milestone: 'M1' },
   },
   {
     path: '/settings/privacy',

@@ -15,6 +15,9 @@ app.use(createPinia())
 app.use(router)
 
 // 启动时应用主题（data-theme）
-useUiStore().applyTheme()
+const ui = useUiStore()
+ui.applyTheme()
+ui.watchSystem()
+ui.startClock()
 
 app.mount('#app')

@@ -17,6 +17,7 @@ const config = computed(() => store.config)
 /** 模块内 Tab */
 const tabs: ModuleTab[] = [
   { id: 'ai', label: 'AI 配置', path: '/settings' },
+  { id: 'appearance', label: '外观', path: '/settings/appearance' },
   { id: 'privacy', label: '隐私授权', path: '/settings/privacy' },
   { id: 'data', label: '数据管理', path: '/settings/data' },
 ]
