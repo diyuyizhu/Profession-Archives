@@ -1,6 +1,6 @@
 {
   "name": "pa-extension",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Profession-Archives 浏览器插件（MV3）：连接本地档案，岗位采集 + 表单自动填充 + 投递回传。",
   "type": "module",
