@@ -17,6 +17,7 @@ use std::time::Duration;
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 
 use crate::ai::{self, AiCapability};
+use crate::import;
 
 // ── Inbox 条目类型（与 extension 回传字段对齐） ──
 
@@ -202,10 +203,19 @@ fn handle(mut req: Request, store: Arc<Mutex<BridgeStore>>, store_path: PathBuf,
     let (status, body) = if path == "/health" {
         // 健康检查（无需配对）
         (200, r#"{"status":"ok"}"#.to_string())
-    } else if path == "/api/bridge/pairing" {
-        // 获取配对 token（无需认证；前端展示用）
-        let guard = store.lock().unwrap();
-        (200, format!(r#"{{"token":"{}"}}"#, guard.pairing_token))
+    } else if path == "/api/bridge/token" {
+        // 配对 token：仅允许本机回环来源（Tauri webview / 本机 dev 页）静默获取。
+        // 用途：AutomationPluginView 展示配对码、lib/bridge.ts 读取 token 供请求携带。
+        // 安全：任意远程网页的 fetch 带 Origin，会被 allowed_origin 拒绝且不带 ACAO，
+        // 浏览器阻断其读取（防窃取）。file:// 页面（"null"）此前被放行、攻击面太大，已移除。
+        // 仅放行白名单来源（Tauri webview / 本机回环 / 扩展）；远程网页带 Origin
+        // 被 allowed_origin 判为 None 且无 ACAO，浏览器阻断其读取响应（防窃取）。
+        if allowed_origin(&req).is_some() {
+            let guard = store.lock().unwrap();
+            (200, format!(r#"{{"token":"{}"}}"#, guard.pairing_token))
+        } else {
+            (403, r#"{"error":"仅允许本机来源获取配对 token"}"#.to_string())
+        }
     } else if path == "/api/automation/profile" {
         let auth = check_auth(&req, &store);
         if let Err(e) = auth {
@@ -215,13 +225,18 @@ fn handle(mut req: Request, store: Arc<Mutex<BridgeStore>>, store_path: PathBuf,
             (200, format!(r#"{{"ok":true,"profile":{}}}"#, summary))
         }
     } else if path == "/api/bridge/sync" && method == Method::Post {
-        // 前端同步 AI 配置 + 档案摘要到桥
-        match read_body(&mut req) {
-            Ok(raw) => match apply_sync(&raw, &app_data_dir) {
-                Ok(()) => (200, r#"{"ok":true}"#.to_string()),
+        // 前端同步 AI 配置 + 档案摘要到桥（写入磁盘，必须配对）
+        let auth = check_auth(&req, &store);
+        if let Err(e) = auth {
+            (401, e)
+        } else {
+            match read_body(&mut req) {
+                Ok(raw) => match apply_sync(&raw, &app_data_dir) {
+                    Ok(()) => (200, r#"{"ok":true}"#.to_string()),
+                    Err(e) => (400, e),
+                },
                 Err(e) => (400, e),
-            },
-            Err(e) => (400, e),
+            }
         }
     } else if path == "/api/automation/ai/analyze-fields" {
         let auth = check_auth(&req, &store);
@@ -260,6 +275,29 @@ fn handle(mut req: Request, store: Arc<Mutex<BridgeStore>>, store_path: PathBuf,
         } else {
             match read_body(&mut req) {
                 Ok(raw) => run_ai(&app_data_dir, AiCapability::ParseResume, &raw),
+                Err(e) => (400, e),
+            }
+        }
+    } else if path == "/api/import/extract-text" && method == Method::Post {
+        // 档案导入：PDF / DOCX → 纯文本（供 AI 简历导入页使用）
+        // 前端 lib/docxExtract.ts 有浏览器端 DOCX 兜底；PDF 只能走这里（CID 中文字体）
+        let auth = check_auth(&req, &store);
+        if let Err(e) = auth {
+            (401, e)
+        } else {
+            match read_body(&mut req) {
+                Ok(raw) => match parse_extract(&raw) {
+                    Ok((filename, b64)) => match import::extract_text(&filename, &b64) {
+                        Ok(text) => (
+                            200,
+                            serde_json::json!({ "ok": true, "text": text }).to_string(),
+                        ),
+                        Err((code, msg)) => {
+                            (code, serde_json::json!({ "error": msg }).to_string())
+                        }
+                    },
+                    Err(e) => (400, e),
+                },
                 Err(e) => (400, e),
             }
         }
@@ -353,18 +391,28 @@ fn handle(mut req: Request, store: Arc<Mutex<BridgeStore>>, store_path: PathBuf,
             (200, format!(r#"{{"ok":true,"mappings":{}}}"#, json))
         }
     } else if path == "/api/bridge/inbox" {
-        // 拉取 inbox 中所有待同步条目
-        let guard = store.lock().unwrap();
-        let json = serde_json::to_string(&guard.inbox).unwrap_or_else(|_| "[]".into());
-        (200, json)
+        // 拉取 inbox 中所有待同步条目（含个人数据，必须配对）
+        let auth = check_auth(&req, &store);
+        if let Err(e) = auth {
+            (401, e)
+        } else {
+            let guard = store.lock().unwrap();
+            let json = serde_json::to_string(&guard.inbox).unwrap_or_else(|_| "[]".into());
+            (200, json)
+        }
     } else if path == "/api/bridge/inbox/clear" {
-        // 清空 inbox：仅清除 job/application（待同步数据），form-mapping 记忆保留
-        let mut guard = store.lock().unwrap();
-        guard
-            .inbox
-            .retain(|item| matches!(item, BridgeItem::FormMapping { .. }));
-        guard.save(&store_path);
-        (200, r#"{"ok":true}"#.to_string())
+        // 清空 inbox：仅清除 job/application（待同步数据），form-mapping 记忆保留（必须配对）
+        let auth = check_auth(&req, &store);
+        if let Err(e) = auth {
+            (401, e)
+        } else {
+            let mut guard = store.lock().unwrap();
+            guard
+                .inbox
+                .retain(|item| matches!(item, BridgeItem::FormMapping { .. }));
+            guard.save(&store_path);
+            (200, r#"{"ok":true}"#.to_string())
+        }
     } else {
         (404, format!(r#"{{"error":"未知路径: {}"}}"#, url))
     };
@@ -513,6 +561,16 @@ fn gen_id() -> String {
 }
 
 // ── 请求解析 ──
+
+/// 解析 /api/import/extract-text 请求体 → (filename, content_base64)
+fn parse_extract(raw: &str) -> Result<(String, String), String> {
+    let v: serde_json::Value =
+        serde_json::from_str(raw).map_err(|e| format!(r#"{{"error":"JSON 解析失败：{e}"}}"#))?;
+    let b64 = get_str(&v, "content_base64")
+        .filter(|s| !s.trim().is_empty())
+        .ok_or(r#"{"error":"需提供 content_base64"}"#.to_string())?;
+    Ok((get_str(&v, "filename").unwrap_or_default(), b64))
+}
 
 fn parse_job(raw: &str) -> Result<BridgeItem, String> {
     let v: serde_json::Value =
@@ -750,5 +808,68 @@ fn extract_json(text: &str) -> String {
         inner[s..=e].to_string()
     } else {
         inner
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::Engine as _;
+
+    #[test]
+    fn parse_extract_requires_base64() {
+        let err = parse_extract(r#"{"filename":"a.pdf"}"#).unwrap_err();
+        assert!(err.contains("content_base64"), "{err}");
+    }
+
+    #[test]
+    fn parse_extract_reads_both_fields() {
+        let (name, b64) = parse_extract(r#"{"filename":"a.pdf","content_base64":"YWJj"}"#).unwrap();
+        assert_eq!(name, "a.pdf");
+        assert_eq!(b64, "YWJj");
+    }
+
+    /// 端到端：真起桥 → 带 Bearer 打 /api/import/extract-text → 拿到中文文本。
+    /// 端口 8000 被占用（桌面端正在运行）时跳过，避免测试互相干扰。
+    #[test]
+    fn import_extract_text_over_http() {
+        let dir = std::env::temp_dir().join(format!("pa-bridge-test-{}", std::process::id()));
+        let _ = fs::create_dir_all(&dir);
+
+        let Ok(handle) = BridgeHandle::start(dir.clone()) else {
+            eprintln!("跳过：127.0.0.1:8000 已被占用（桌面端可能在运行）");
+            return;
+        };
+
+        let raw = fs::read_to_string(dir.join("bridge-store.json")).expect("token 应已落盘");
+        let token = serde_json::from_str::<serde_json::Value>(&raw).unwrap()["pairing_token"]
+            .as_str()
+            .expect("pairing_token")
+            .to_string();
+
+        let bytes = include_bytes!("../tests/fixtures/sample-resume-cn.pdf");
+        let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
+
+        // 无 token → 401
+        let unauthorized = ureq::post("http://127.0.0.1:8000/api/import/extract-text")
+            .send_json(serde_json::json!({ "filename": "r.pdf", "content_base64": b64 }));
+        match unauthorized {
+            Err(ureq::Error::Status(401, _)) => {}
+            other => panic!("未配对应 401，实际：{other:?}"),
+        }
+
+        // 带 token → 200 + 中文文本
+        let body: serde_json::Value = ureq::post("http://127.0.0.1:8000/api/import/extract-text")
+            .set("Authorization", &format!("Bearer {token}"))
+            .send_json(serde_json::json!({ "filename": "r.pdf", "content_base64": b64 }))
+            .expect("配对请求应成功")
+            .into_json()
+            .expect("响应应是 JSON");
+        assert_eq!(body["ok"], true, "{body}");
+        let text = body["text"].as_str().unwrap_or_default();
+        assert!(text.contains("张三"), "实际：{text}");
+
+        handle.stop();
+        let _ = fs::remove_dir_all(&dir);
     }
 }

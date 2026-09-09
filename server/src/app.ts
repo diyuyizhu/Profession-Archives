@@ -1,6 +1,9 @@
 /**
  * Fastify app 工厂：注册插件与档案领域路由（模块 A）。
  * 骨架路由：AI 服务（/api/ai）、可信认证（/api/verify）、插件本地桥（/api/automation）。
+ *
+ * ⚠️ 仅开发/备用：桌面端由 Rust 桥（src-tauri/src/bridge.rs）提供同址服务，
+ * 本 app 不会被 Tauri 启动。详见 server/README.md。
  */
 import cors from '@fastify/cors'
 import Fastify from 'fastify'
@@ -12,6 +15,7 @@ import { registerAutomationAiRoutes } from './routes/automation-ai.js'
 import { registerAutomationRoutes } from './routes/automation.js'
 import { registerVerifyRoutes } from './routes/verify.js'
 import { registerScrapeRoutes } from './services/scrapeService.js'
+import { registerImportRoutes } from './routes/import-text.js'
 
 export function buildApp() {
   const app = Fastify({ logger: true })
@@ -67,6 +71,7 @@ export function buildApp() {
   registerAutomationRoutes(app)
   registerAutomationAiRoutes(app)
   registerScrapeRoutes(app)
+  registerImportRoutes(app)
 
   return app
 }

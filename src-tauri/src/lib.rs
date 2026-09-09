@@ -21,6 +21,9 @@ use bridge::BridgeHandle;
 
 mod ai;
 
+/// 文件文本提取（PDF / DOCX → 纯文本），供桥路由 /api/import/extract-text 使用
+mod import;
+
 /// 一次进行中的录制：ffmpeg 子进程 + 其 stdin（用于发送 'q' 优雅结束）
 struct ActiveRecording {
     child: Child,

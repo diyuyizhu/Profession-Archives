@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 简历导入（E）：上传/粘贴简历文本 → AI 解析 → 写入档案。
+ * 简历导入（E）：上传 Word/PDF/文本 → AI 解析 → 写入档案。
  * 覆盖前弹选择（覆盖 / 合并 / 取消）；同时把解析结果复刻一份「基础简历」挂到简历树根。
  */
 import { computed, ref } from 'vue'
@@ -11,6 +11,8 @@ import PageHeader from '@/components/PageHeader.vue'
 import PrimaryButton from '@/components/PrimaryButton.vue'
 import SecondaryButton from '@/components/SecondaryButton.vue'
 import { parseResume, type ParsedResume } from '@/lib/aiClient'
+import { BRIDGE_BASE, fetchPairingToken } from '@/lib/bridge'
+import { extractDocxText } from '@/lib/docxExtract'
 import { useProfileStore } from '@/stores/profile'
 import { useResumeTreeStore } from '@/stores/resumeTree'
 
@@ -33,18 +35,56 @@ const showConfirm = ref(false)
 
 const hasProfileContent = computed(() => !profileStore.isEmpty)
 
-/** 从文件读取简历文本 */
-function onPickFile(e: Event): void {
+/** 经本地桥提取文本（服务端 pdf-parse / mammoth） */
+async function extractViaBridge(file: File): Promise<string> {
+  const buf = new Uint8Array(await file.arrayBuffer())
+  let bin = ''
+  const chunk = 0x8000
+  for (let i = 0; i < buf.length; i += chunk) bin += String.fromCharCode(...buf.subarray(i, i + chunk))
+  const token = await fetchPairingToken()
+  if (!token) throw new Error('本地服务未运行：请启动桌面应用后重试')
+  const res = await fetch(`${BRIDGE_BASE}/api/import/extract-text`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ filename: file.name, content_base64: btoa(bin) }),
+  })
+  const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string }
+  if (!res.ok || data.error) throw new Error(data.error ?? `解析失败 HTTP ${res.status}`)
+  return data.text ?? ''
+}
+
+/** 读取简历文件：txt/md 直读 · docx 客户端零依赖解析（失败回退服务端）· pdf 走服务端 */
+async function onPickFile(e: Event): Promise<void> {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    resumeText.value = String(reader.result ?? '')
-    parsed.value = null
+  const name = file.name.toLowerCase()
+  msg.value = ''
+  parsed.value = null
+  try {
+    if (name.endsWith('.txt') || name.endsWith('.md')) {
+      resumeText.value = await file.text()
+    } else if (name.endsWith('.docx')) {
+      try {
+        resumeText.value = await extractDocxText(await file.arrayBuffer())
+      } catch (e1) {
+        resumeText.value = await extractViaBridge(file)
+        if (!resumeText.value.trim()) throw e1
+      }
+    } else if (name.endsWith('.pdf')) {
+      resumeText.value = await extractViaBridge(file)
+    } else if (name.endsWith('.doc')) {
+      throw new Error('旧版 .doc 不支持，请另存为 .docx')
+    } else {
+      resumeText.value = await file.text()
+    }
+    if (!resumeText.value.trim()) throw new Error('未提取到文本（可能是扫描件 / 纯图片简历）')
+    msg.value = `已读取「${file.name}」（${resumeText.value.length} 字），点「AI 解析」写入档案`
+  } catch (err) {
+    msg.value = err instanceof Error ? err.message : '文件读取失败'
+  } finally {
+    input.value = ''
   }
-  reader.readAsText(file)
-  input.value = ''
 }
 
 async function doParse(): Promise<void> {
@@ -107,7 +147,7 @@ function writeArchive(mode: 'merge' | 'overwrite'): void {
   <div class="relative min-h-full">
 
     <div class="relative z-1 mx-auto max-w-5xl px-6 pb-16">
-      <PageHeader code="E2" title="简历导入" desc="上传/粘贴简历 → AI 解析 → 自动写入档案" back-to="/resume" />
+      <PageHeader code="E2" title="简历导入" desc="上传 Word / PDF 或粘贴文本 → AI 解析 → 自动写入档案" back-to="/resume" />
 
       <ModuleTabs :tabs="tabs" />
 
@@ -117,8 +157,8 @@ function writeArchive(mode: 'merge' | 'overwrite'): void {
           <div class="mb-3 flex items-center justify-between">
             <span class="text-[13px] font-semibold text-neutral-900">简历文本</span>
             <label class="cursor-pointer text-[11.5px] text-neutral-900 hover:underline">
-              上传 .txt/.md
-              <input type="file" accept=".txt,.md,.text,text/plain" class="hidden" @change="onPickFile" />
+              上传 .docx / .pdf
+              <input type="file" accept=".txt,.md,.docx,.pdf" class="hidden" @change="onPickFile" />
             </label>
           </div>
           <textarea

@@ -8,7 +8,7 @@
 
 ## 背景
 
-本项目从一期"简历管理工具"升级而来。一期已落地：本地优先的档案原子化管理（[db.py](backend/app/db.py)）、岗位投递看板（[TrackingBoardView.vue](frontend/src/views/TrackingBoardView.vue)）、JD 关键词匹配简历草稿（[resume_builder.py](backend/app/services/resume_builder.py)）。
+本项目从一期"简历管理工具"升级而来。一期已落地：本地优先的档案原子化管理、岗位投递看板（[TrackingBoardView.vue](frontend/src/views/TrackingBoardView.vue)）、JD 关键词匹配简历草稿。二期已按 [docs/architecture.md](docs/architecture.md) 决策**用 TypeScript/Rust 全栈重写**，一期 Python 代码与 git 历史已彻底删除。
 
 升级的核心驱动是一个明确的痛点：**部分岗位的简历投递入口在招聘公司官网（或第三方平台的官网页面）的表单里**，本文档规划了"本地化软件 + 浏览器插件"的配合方案——读取官网简历提交页面、自动填充、用户确认后提交。
 
@@ -125,8 +125,8 @@
 ```
 ┌─────────────────────────┐        localhost HTTP        ┌──────────────────────┐
 │  浏览器插件 (MV3)         │ ◄──────────────────────────► │  桌面端本地服务         │
-│  content script 扫表单    │    GET /api/automation/      │  FastAPI + SQLite      │
-│  popup 面板 + 确认按钮     │    profile?token=xxx         │  (仅绑定 127.0.0.1)     │
+│  content script 扫表单    │    GET /api/automation/      │  Rust 内置桥           │
+│  popup 面板 + 确认按钮     │    profile?token=xxx         │  (仅绑定 127.0.0.1:8000)│
 └─────────────────────────┘                               └──────────────────────┘
 ```
 
@@ -148,15 +148,16 @@
 
 ## 技术架构方向（与现状的演进）
 
-**复用现状**：FastAPI + SQLite + Vue3/Tailwind/daisyUI 骨架，[archive_store.py](backend/app/services/archive_store.py) 的 CRUD 模式，[resume_builder.py](backend/app/services/resume_builder.py) 的匹配管线。
+**技术栈现状**：Tauri 2（Rust 壳）+ Vue3/Vite6/Tailwind v4/daisyUI + Pinia；本地服务是**桥内置于 Rust**（`src-tauri/src/bridge.rs`，`tiny_http` 绑 `127.0.0.1:8000`），不是 Node sidecar；浏览器插件用 wxt（MV3 + TS）。详细选型与偏差见 [docs/architecture.md](docs/architecture.md)。
 
-**新增**：
+**已落地**：
 
-- `backend/app/services/ai_service.py`：Provider 抽象层（DeepSeek Anthropic 兼容网关 / Ollama），统一 prompt 模板与调用入口。
-- `backend/app/services/interview_service.py`：面试记录、复盘、转化分析。
-- `backend/app/routes/automation.py`：插件专用接口（配对 token、档案查询、投递回传）。
-- `extensions/webextension/`：浏览器插件（MV3），含 content script、popup、background、per-origin 映射存储。
-- 数据模型扩展（[db.py](backend/app/db.py) 追加表）：`journal_entries`（日记/成就/里程碑）、`interviews`（面试轮次）、`reflections`（复盘）、`form_mappings`（站点字段映射）、`ai_provider_config`。
+- `src-tauri/src/bridge.rs`：插件专用接口（配对 token、岗位采集、投递回传、字段映射）+ 前端同步 inbox。
+- `src-tauri/src/ai.rs`：AI Provider 抽象（DeepSeek 云端 / Ollama 本地），含 SSRF 与隐私授权防护。
+- `src-tauri/src/import.rs`：档案导入的 PDF / DOCX → 文本提取。
+- `extension/`：浏览器插件（MV3），含 content script 表单扫描填充、popup 配对、per-origin 映射记忆。
+- 数据模型（`server/src/db.ts` 的 SQLite schema，11 张表）：`profiles`/`skills`/`experiences`/`education`/`projects` + `journal_entries`（日记/成就/里程碑）、`applications` + `application_events`（投递与状态变更）、`form_mappings`（站点字段映射）、`ai_provider_config`（AI 配置）、`attestations`（存证哈希）。
+- `server/`：Node/Fastify 后端为**开发/备用**，桌面端不启动（见 [server/README.md](server/README.md)）。
 
 ## 里程碑分期
 
@@ -215,26 +216,41 @@
 
 ## 运行
 
-下载 release，即可启动应用。开发模式：
+下载 [release](release/README.md) 即可启动应用。开发模式（需 Node ≥ 20；桌面端另需 Rust 工具链）：
 
-- 后端：`uvicorn backend.app.main:app`（源码运行时数据落在 `.profession_archives/`）
-- 前端：`cd frontend && npm install && npm run dev`（Vite dev 端口 5173，走 `/api` 代理）
-- 桌面：`python backend/desktop.py`（PyWebView 窗口 + 本地 FastAPI）
+```bash
+npm install                 # 安装 workspaces 依赖（frontend / shared / server）
 
-## 最小目录结构
+npm run dev                 # ① 仅前端：Vite dev server（5173，浏览器打开；无桥，纯 localStorage）
+npx tauri dev               # ② 桌面端（推荐）：拉起 ① + Rust 桥 + 窗口
+
+npm run server              # ③ 备用：Node/Fastify 后端（桌面端不启动，仅调试用）
+cd extension && npm run dev  # ④ 浏览器插件（wxt dev，产物加载 .output/chrome-mv3）
+```
+
+验证：
+
+```bash
+npm run typecheck           # 前端 vue-tsc + server tsc
+npm test                    # shared/server 逻辑冒烟测试（tests/smoke.ts）
+cd src-tauri && cargo test --lib   # Rust 桥与文件解析单元/端到端测试
+```
+
+数据位置：桌面版数据在应用数据目录的 WebView localStorage（`%APPDATA%\com.professionarchives.app\`）；
+`server/` 独立运行时 SQLite 落 `<repo>/.pa-data/profession-archives.sqlite3`。
+
+## 目录结构
 
 ```text
 Profession-Archives/
-├── backend/                 # FastAPI 服务与业务逻辑
-│   └── app/
-│       ├── main.py          # 路由入口
-│       ├── db.py            # SQLite schema
-│       ├── schemas.py       # Pydantic 模型
-│       ├── core/config.py   # 路径配置
-│       └── services/        # 档案 / 简历 / AI / 面试服务
-├── frontend/                # Vue 前端源码
-├── dev-tools/               # 可选：构建脚本与工程产物（非必需）
-├── docs/                    # 补充文档（[business-model.md](docs/business-model.md) 商业化 / [architecture.md](docs/architecture.md) 架构与开发计划）
-├── tests/                   # API 集成测试
-└── README.md                # 本需求文档
+├── frontend/                # Vue3 SPA（views 28 个 / stores 17 个，localStorage 持久化）
+├── shared/                  # @pa/shared：前后端共享类型 + 纯逻辑（状态机/统计/AI 启发式）
+├── server/                  # Node/Fastify 后端（开发/备用，桌面端不启动；见 server/README.md）
+├── extension/               # wxt 浏览器插件（MV3）：content script 扫描填充 + popup 配对
+├── src-tauri/               # Rust 桌面壳：窗口/录屏 + 内置本地桥（bridge.rs/ai.rs/import.rs）
+├── docs/                    # [architecture.md](docs/architecture.md) 架构与开发计划 / [business-model.md](docs/business-model.md) 商业化
+├── tests/                   # 冒烟测试（smoke.ts）+ 表单样例（demo-submit-form.html）
+├── release/                 # 发布产物说明（二进制不入库）
+└── README.md                # 本需求文档（PRD）
 ```
+

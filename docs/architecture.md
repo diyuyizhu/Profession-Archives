@@ -4,6 +4,23 @@
 > 需求基线见 [README.md](../README.md)（完整 PRD）；商业化见 [docs/business-model.md](business-model.md)。
 > 现状：原仓库是一版 Python demo（FastAPI + sqlite3 + PyWebView + Vue3 + Tauri 2.2 脚手架），按用户决策**彻底清除**（demo 代码与 git 历史均已删除，仓库全新初始化，2026-08-06），以下为全新 TS 架构的完整设计。
 
+> ⚠️ **实现偏差说明（2026-09 复核，以本节为准）**
+>
+> 本文件写于阶段 0 之前，落地过程中有几处**已按实现调整**，读后续章节时请对照：
+>
+> | 蓝图 | 实际实现 | 说明 |
+> |---|---|---|
+> | Tauri spawn **Node sidecar** | **桥内置于 Rust**（`src-tauri/src/bridge.rs`，`tiny_http` 绑 `127.0.0.1:8000`） | `tauri.conf.json` 无 `externalBin`，`lib.rs` 不 spawn Node；AI 调用在 `src-tauri/src/ai.rs`，文件解析在 `src-tauri/src/import.rs` |
+> | `better-sqlite3 + Drizzle ORM` + drizzle-kit 迁移 | 裸 `better-sqlite3` + 手写 `ensureColumn` 补列（`server/src/db.ts`） | 未接入 Drizzle；`server/` 桌面端不启动，见 [server/README.md](../server/README.md) |
+> | `Vercel AI SDK` | 自研 HTTP 客户端（Rust `ureq` / Node `fetch`）调 OpenAI 兼容接口 | 未引入 AI SDK |
+> | `Zod v4` 校验 | 前端 TS 类型 + 后端手写校验 | 未引入 Zod |
+> | `undici + cheerio` URL 采集 | 岗位采集以**插件**为主（`extension/entrypoints/content.ts`） | 未引入无头/静态抓取依赖 |
+> | `vitest + ESLint + CI` | `tests/smoke.ts`（自写断言）+ `cargo test` | 无 vitest/ESLint/CI 配置 |
+> | 前端数据存 SQLite | **localStorage 为事实源**（17 个 store、13 个 `pa-*-v1` key） | SQLite 仅 `server/` 独立运行时使用 |
+> | `cloud/` 目录 | 未创建 | 云端接口仍为纸面契约 |
+>
+> **文档其余部分保留为原始设计意图**，未逐条改写；涉及「Node sidecar / Drizzle / vitest」的表述按上表理解。
+
 ---
 
 ## 1. 背景与产品决策
@@ -19,7 +36,7 @@
 | 旧代码 | **彻底删除**（demo 代码与 git 历史均清除），仓库从零初始化、全新起点 |
 | 开发方式 | 单人开发（vibe coding），按阶段独立交付验收 |
 
-**环境实测**：Node v24.18.0 / npm 11.16.0 就绪；**Rust/Cargo 未安装**（Tauri 构建必需，列为阶段 0 前置）。
+**环境实测**：Node v24.18.0 / npm 11.16.0 就绪；Rust 1.97.1 + Cargo 已装（2026-09 复核，阶段 0 前置已满足，`release/` 已有 v0.2.0 构建产物）。
 
 ---
 
@@ -70,13 +87,13 @@ Profession-Archives/
 │       └── components/       # common / profile / application / interview / ai
 ├── extension/                # 独立 wxt 项目（不入 workspace）：MV3 插件
 │   └── entrypoints/          # popup(Vue) / content(表单扫描+填充) / background(消息路由)
-├── src-tauri/                # Rust crate：窗口/托盘/系统能力 + sidecar spawn
+├── src-tauri/                # Rust crate：窗口/录制 + 内置本地桥
 │   ├── tauri.conf.json
-│   ├── binaries/             # sidecar 构建产物
-│   └── src/lib.rs            # setup 钩子 spawn Node 后端；on_window_event kill sidecar
+│   ├── binaries/             # （空；无 sidecar，见 4.1 偏差说明）
+│   └── src/                  # lib.rs（窗口/录制）+ bridge.rs（桥）+ ai.rs + import.rs
 ├── cloud/                    # @pa/cloud：云端接口桩（名片托管/AI 网关/链上存证，后置实现）
-├── tests/                    # vitest 集成测试
-└── .github/workflows/ci.yml
+├── tests/                    # 冒烟测试（smoke.ts；未用 vitest）
+└── .github/workflows/ci.yml  # （未创建）
 ```
 
 ---
@@ -84,6 +101,13 @@ Profession-Archives/
 ## 4. 核心架构设计
 
 ### 4.1 运行形态（Tauri 壳 + Node sidecar）
+
+> ⚠️ **已改为「Tauri 壳 + Rust 内置桥」**：本节保留原始 sidecar 方案作为备选，
+> 实际实现见 `src-tauri/src/bridge.rs`（`tiny_http` 绑 `127.0.0.1:8000`）。
+> 取舍原因：Node sidecar 需处理 bun×better-sqlite3 打包、进程泄漏、端口协商与跨平台分发；
+> Rust 桥随进程启动即在线、零外部运行时依赖，插件与前端所需接口用 Rust 重写成本可控。
+> 代价：能力需双实现（`server/src/routes/import-text.ts` ↔ `src-tauri/src/import.rs`），
+> 且 `server/` 沦为开发/备用（见 [server/README.md](../server/README.md)）。
 
 - Tauri 启动时通过 `tauri::process::Command::new_sidecar` spawn Node 后端。
 - 开发模式：`node --import tsx server/src/index.ts`；生产模式：`bun build --compile` 单文件 sidecar（Tauri `externalBin` 注册，命名需带 target triple，如 `server-x86_64-pc-windows-msvc.exe`）。
@@ -94,20 +118,25 @@ Profession-Archives/
 ### 4.2 浏览器插件通信（本地桥）
 
 ```
-浏览器插件(MV3) ◄─ 127.0.0.1:{port}/api/automation/* ─► Node 后端(Fastify) ─► SQLite
+浏览器插件(MV3) ◄─ 127.0.0.1:8000/api/automation/* ─► Rust 内置桥(bridge.rs) ─► bridge-store.json
 ```
 
-- **端口**：首次启动随机选空闲端口，写入 app config 持久化。
-- **配对 token**：启动时生成 `crypto.randomUUID()`，设置页展示，插件 popup 粘贴，存 `chrome.storage.local`；请求带 `Authorization: Bearer <token>`。
-- **CORS**：`@fastify/cors` 仅放行 `chrome-extension://<extension-id>`。
+- **端口**：固定 `127.0.0.1:8000`（未做随机端口协商；与 `server/` 手动启动会冲突）。
+- **配对 token**：启动时生成并落盘 `bridge-store.json`，设置页展示，插件 popup 粘贴，存 `chrome.storage.local`；请求带 `Authorization: Bearer <token>`。
+- **CORS**：手写白名单回显 origin（Tauri webview / `localhost` / `127.0.0.1` / `chrome-extension://`），拒绝的 origin 不设 ACAO。
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
+| GET | `/health` | 桥在线探测（无需配对） |
+| GET | `/api/bridge/token` | 前端取配对码（仅回环来源） |
 | GET | `/api/automation/profile` | 插件读取当前档案（供填充） |
 | POST | `/api/automation/job` | 插件采集岗位回传入库 |
 | POST | `/api/automation/application` | 投递结果回传（更新状态） |
-| POST | `/api/automation/form-mapping` | 上报站点字段映射（跨会话复用） |
-| GET | `/api/automation/form-mapping?origin=` | 查询站点已记忆映射 |
+| POST/GET | `/api/automation/form-mapping` | 站点字段映射上报 / 按 origin 查询 |
+| POST | `/api/bridge/sync` | 前端同步 aiConfig + 档案摘要给桥 |
+| GET/POST | `/api/bridge/inbox` · `/api/bridge/inbox/clear` | 前端拉取 / 清空采集 inbox |
+| POST | `/api/automation/ai/{analyze-fields,extract-job,generate-resume,parse-resume}` | 桥内 AI 调用 |
+| POST | `/api/import/extract-text` | PDF / DOCX → 文本（`src-tauri/src/import.rs`） |
 
 ### 4.3 AI Provider 抽象
 
@@ -157,6 +186,14 @@ GET    /api/cloud/chain/verify/:hash
 
 **原则**：tags 用规范化关联表（`tags` + 多对多）而非 JSON 字符串；时间统一 ISO 8601 TEXT；数据库落 `%APPDATA%/ProfessionArchives/profession-archives.sqlite3`，开启 WAL + foreign_keys。
 
+> ⚠️ **实际 schema 与上表的差异（以 `server/src/db.ts` 为准）**：
+>
+> - **已建表（11 张）**：`profiles` / `skills` / `experiences` / `education` / `projects` / `journal_entries` / `applications` / `application_events` / `form_mappings` / `ai_provider_config` / `attestations`（存证哈希，上表未列）。
+> - **未建表**：`certificates`、`interviews`、`reflections`、`question_bank`、`learning_plans`、`learning_tasks`、`resume_versions`、`assets`、`tags` —— 这些模块的**数据目前存在前端 localStorage**（如 `pa-interview-tools-v1`、`pa-question-bank-v1`、`pa-learning-plans-v1`、`pa-resume-tree-v1`）。
+> - **tags 未规范化**：各表用 `tags_json TEXT DEFAULT '[]'`，未建 `tags` 关联表。
+> - **industry / category 未落地**：`skills` 只有 `category`，`experiences` / `projects` 未建 `industry` / `category` 列 —— 多行业扩展前需补。
+> - **迁移方式**：无 drizzle-kit，用 `ensureColumn()` 查 `PRAGMA table_info` 后 `ALTER TABLE ADD COLUMN`。
+
 ### 4.6 旧代码处置（已完成）
 
 - 原 demo（Python FastAPI 后端、Vue 前端、Tauri 2.2 脚手架、旧 SQLite 数据）与全部 git 历史已按用户决策**彻底删除**，仓库全新初始化（2026-08-06）。
@@ -166,6 +203,12 @@ GET    /api/cloud/chain/verify/:hash
 ---
 
 ## 5. 分阶段开发计划
+
+> **完成度速览（2026-09）**：阶段 0–5 的**功能面**均已落地并出 v0.2.0 产物（`release/`），
+> 但落地方式与本节描述有出入（见文首偏差表）。主要缺口：
+> ① 数据主存储仍是 localStorage 而非 SQLite；② 无 vitest/ESLint/CI；
+> ③ 部分表（interviews / question_bank / learning_plans / resume_versions）未建；
+> ④ 插件动态表单（MutationObserver）与权限收窄未完成；⑤ cloud/ 未创建。
 
 ### 阶段 0：环境与脚手架（3–5 天）
 
