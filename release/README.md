@@ -1,12 +1,21 @@
-# Profession-Archives v0.2.0-beta · 生涯大脑
+# Profession-Archives v0.2.1-beta · 生涯大脑
 
 > 本地优先的个人求职全流程管理工具 —— 从岗位采集、简历生成、投递看板、面试复盘到 offer 归档，一条龙自己在本地搞定，数据不出本机。
+
+## v0.2.1 更新
+
+- **修复：PDF 简历导入**。此前「简历导入」选 PDF 会提示「本地服务未运行 / 解析失败」——该接口只存在于 Node 侧，而桌面端跑的是 Rust 内置桥。现已由 Rust 桥实现（`pdf-extract` + `zip`），中文简历提取正常。
+- 新增「设置 → 外观」：跟随系统 / 白天 / 深夜 / 定时切换四档。
+- 本地桥请求统一走 Bearer 配对鉴权（token 轮换自动重试）。
+- 插件：修复 `content.ts` 的语法错误（此前 `wxt build` 会中断）。
+- 文档与版本号校正（0.2.0 → 0.2.1）。
 
 ## 怎么用
 
 ### 第一步：运行
 
-- 下载解压后，**双击 `Profession-Archives-v0.2.0-win-x64.exe`**，绿色免安装，直接跑。
+- 下载解压后，**双击 `Profession-Archives-v0.2.1-win-x64.exe`**，绿色免安装，直接跑。
+- 也可用安装包：`Profession-Archives_0.2.1_x64-setup.exe`（NSIS）或 `Profession-Archives_0.2.1_x64_en-US.msi`。
 - 首次打开是空的 —— 没有预设数据，从零开始。
 
 ### 第二步：开始记录
@@ -28,7 +37,7 @@
 1. Chrome / Edge 地址栏输入 `chrome://extensions`（Edge: `edge://extensions`）
 2. 右上角打开「**开发者模式**」
 3. 点「**加载已解压的扩展程序**」
-4. 选择 `Profession-Archives-extension-0.1.0-chrome` 目录（**注意：是解压出来的文件夹，不是 zip 文件**）
+4. 选择 `Profession-Archives-extension-0.1.1-chrome` 目录（**注意：是解压出来的文件夹，不是 zip 文件**）
 5. 加载成功后浏览器工具栏会出现「Profession-Archives 助手」图标
 
 #### 配对
@@ -46,6 +55,8 @@
 | **投递看板**     | 支持 1~8 轮面试动态配置、三种视图（看板/列表/全流程泳道）、筛选/排序/标签、邮箱往来归档 |
 | **面试复盘**     | 多轮记录、AI 复盘分析、面经题库积累、录音/录屏归档                                      |
 | **简历生成**     | 选投递 → JD 定向简历、AI 润色/提炼、纯文本导出                                          |
+| **简历导入**     | 上传 PDF / DOCX / TXT 简历 → 本地提取文本 → AI 解析写入档案（PDF 中文提取已修复）        |
+| **外观**         | 跟随系统 / 白天 / 深夜 / 定时切换四档皮肤                                               |
 | **系统录屏**     | 本机装 ffmpeg → 系统级录屏（屏幕+系统声音）；没装 ffmpeg 自动回退网页录屏               |
 | **自定义仪表盘** | 首页可拖动调整卡片大小和位置，可隐藏/显示/排序                                          |
 | **数据管理**     | 一键导出/导入 JSON 备份，数据全归你                                                     |
@@ -55,13 +66,14 @@
 
 所有数据存在本机：`%APPDATA%\com.professionarchives.app\`
 
-- 桌面版：WebView localStorage
-- 桥配对 token：`pairing-token.txt`
-- 插件采集数据暂存：`bridge-inbox.json`
+- 桌面版业务数据：WebView localStorage
+- 桥配对 token：`bridge-store.json`（含配对码与插件采集暂存 inbox）
+- 桥同步的档案摘要 / AI 配置：`profile-summary.json`、`ai-config.json`
+- 面试录制文件：`recordings/`
 
 ## 已知限制（测试版）
 
-- **AI 功能当前为本地启发式**，暂未接大模型 API（后续版本接入 DeepSeek / Ollama）
+- **AI 能力分两路**：素材提炼 / 简历润色 / JD 匹配 / 面试复盘为**本地启发式**（无需联网、无需配置）；简历解析与特化简历生成会经本地桥调用**你配置的模型**（「设置 → AI 配置」填 DeepSeek 或 Ollama，未配置时会提示失败）
 - **录屏需本机装 ffmpeg** 并加入 PATH 才能录系统声音；没装 ffmpeg 自动回退浏览器录屏（只有标签页声音）
 - **插件自动填表**对少数动态表单（React/Vue 渲染、非标准控件）可能识别不准，需手动修补
 - **仅 Win10+**（Win10 需 WebView2 运行时，Edge 已自带）
