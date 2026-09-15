@@ -377,7 +377,11 @@ onBeforeUnmount(() => {
 
     <div class="relative z-1 mx-auto max-w-4xl px-6 pb-16">
       <div v-if="app">
-        <PageHeader :code="statusMeta(app.status, app.total_rounds).label" :title="app.title" :desc="app.company">
+        <PageHeader
+          :code="statusMeta(app.status).label"
+          :title="app.title || '未命名岗位'"
+          :desc="app.company || '未填公司'"
+        >
           <SecondaryButton @click="router.push('/tracking')">← 返回看板</SecondaryButton>
           <PrimaryButton @click="openEdit">编辑档案</PrimaryButton>
         </PageHeader>

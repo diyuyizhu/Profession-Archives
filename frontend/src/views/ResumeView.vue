@@ -142,7 +142,7 @@ function exportPdf(): void {
           <select v-model="pickedId" class="input-trae h-9 w-auto min-w-[220px] appearance-none text-[12.5px]">
             <option :value="null" disabled>选择有 JD 的投递…</option>
             <option v-for="app in jdApps" :key="app.id" :value="app.id">
-              {{ app.company }} · {{ app.title }}
+              {{ app.company || '未填公司' }} · {{ app.title || '未命名岗位' }}
             </option>
           </select>
           <span v-if="!jdApps.length" class="text-[11.5px] text-neutral-400">

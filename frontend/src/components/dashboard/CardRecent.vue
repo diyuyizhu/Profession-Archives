@@ -33,7 +33,7 @@ function companyOf(appId: string): string {
     <div v-for="app in recentApps" :key="app.id" class="flex items-center justify-between gap-2">
       <div class="min-w-0">
         <span class="truncate text-[12.5px] font-medium text-neutral-800">{{ app.company }}</span>
-        <span class="truncate text-[11.5px] text-neutral-400"> · {{ app.title }}</span>
+        <span class="truncate text-[11.5px] text-neutral-400"> · {{ app.title || '未命名岗位' }}</span>
       </div>
       <span
         class="shrink-0 rounded-full border px-1.5 py-px text-[10px]"

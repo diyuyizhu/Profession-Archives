@@ -30,7 +30,7 @@ defineEmits<{ select: [id: string] }>()
         :class="selectedId === app.id ? 'bg-neutral-100' : 'hover:bg-neutral-100'"
         @click="$emit('select', app.id)"
       >
-        <div class="truncate text-[13px] font-medium text-neutral-900">{{ app.title }}</div>
+        <div class="truncate text-[13px] font-medium text-neutral-900">{{ app.title || '未命名岗位' }}</div>
         <div class="mt-0.5 flex items-center justify-between">
           <span class="truncate text-[11.5px] text-neutral-500">{{ app.company }}</span>
           <span

@@ -75,7 +75,8 @@ const submitting = ref(false)
 
 function submit(): void {
   if (submitting.value) return
-  if (!form.value.company.trim() || !form.value.title.trim()) return
+  // 公司与岗位允许留空：先入库再补信息，或只记一个 URL / JD 也行
+  if (!form.value.company.trim() && !form.value.title.trim() && !form.value.url.trim()) return
   const payload: ApplicationPayload = {
     company: form.value.company.trim(),
     title: form.value.title.trim(),
@@ -266,13 +267,9 @@ function submit(): void {
             </span>
           </label>
 
-          <!-- 实时校验 -->
+          <!-- 实时校验：公司与岗位可留空 -->
           <div class="min-h-[16px] text-[11px] text-neutral-400">
-            {{
-              form.company.trim() && form.title.trim()
-                ? ''
-                : '请至少填写公司与岗位名称'
-            }}
+            公司与岗位可以留空；至少填一项（或填 URL）即可入库
           </div>
 
         <!-- 提交反馈 -->
@@ -288,7 +285,7 @@ function submit(): void {
           <SecondaryButton @click="router.push('/tracking/board')">取消</SecondaryButton>
           <PrimaryButton
             type="submit"
-            :disabled="!(form.company.trim() && form.title.trim())"
+            :disabled="!form.company.trim() && !form.title.trim() && !form.url.trim()"
           >
             {{ form.applied ? '采集并标记已投' : '采集 · 加入备选池' }}
           </PrimaryButton>

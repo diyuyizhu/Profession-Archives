@@ -37,7 +37,7 @@ import {
   type ResolvedField,
   type SortRule,
 } from '@pa/shared/property'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import ApplicationEditModal from '@/components/application/ApplicationEditModal.vue'
@@ -376,6 +376,188 @@ function submitAddProperty(): void {
   addPropertyOpen.value = false
   newPropertyName.value = ''
   newPropertyType.value = 'text'
+}
+
+/* 列显隐：内置字段不可删，但可隐藏 / 重新显示（与其它功能关联的字段保留，只是不占列表） */
+const columnsOpen = ref(false)
+
+function isFieldVisible(key: string): boolean {
+  if (hiddenFields.value.has(key)) return false
+  // 有视图时：未隐藏即显示；无视图时按默认列规则
+  if (propsStore.activeView) return true
+  const f = allFields.value.find((x) => x.key === key)
+  if (!f) return false
+  return f.custom || prefs.showAllFields || DEFAULT_VISIBLE_FIELDS.includes(key)
+}
+
+function setFieldVisible(key: string, visible: boolean): void {
+  const hidden = new Set(hiddenFields.value)
+  if (visible) hidden.delete(key)
+  else hidden.add(key)
+  const view = propsStore.activeView
+  if (view) {
+    propsStore.updateView(view.id, {
+      hidden: [...hidden],
+      columns: view.columns ?? tableFields.value.map((f) => f.key),
+    })
+  } else {
+    propsStore.saveView('自定义视图', {
+      hidden: [...hidden],
+      kind: 'table',
+      columns: tableFields.value.map((f) => f.key),
+    })
+  }
+}
+
+function showAllFieldsAgain(): void {
+  const view = propsStore.activeView
+  if (view) propsStore.updateView(view.id, { hidden: [] })
+  else prefsStore.set({ showAllFields: true })
+}
+
+/* 表格列拖拽排序 */
+const colDragKey = ref<string | null>(null)
+const colDragOverKey = ref<string | null>(null)
+
+function onColDragStart(field: ResolvedField, e: DragEvent): void {
+  colDragKey.value = field.key
+  e.dataTransfer?.setData('text/plain', field.key)
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+}
+
+function onColDragOver(field: ResolvedField, e: DragEvent): void {
+  e.preventDefault()
+  if (colDragKey.value && colDragKey.value !== field.key) colDragOverKey.value = field.key
+}
+
+/** 写回列顺序：有视图改视图，没有则新建一个视图承载（与列显隐一致） */
+function persistColumnOrder(order: string[]): void {
+  const view = propsStore.activeView
+  if (view) propsStore.updateView(view.id, { columns: order })
+  else propsStore.saveView('自定义视图', { columns: order, kind: 'table' })
+}
+
+function onColDrop(field: ResolvedField): void {
+  const from = colDragKey.value
+  colDragKey.value = null
+  colDragOverKey.value = null
+  if (!from || from === field.key) return
+  const keys = tableFields.value.map((f) => f.key)
+  const fromIdx = keys.indexOf(from)
+  const toIdx = keys.indexOf(field.key)
+  if (fromIdx < 0 || toIdx < 0) return
+  const next = [...keys]
+  const [moved] = next.splice(fromIdx, 1)
+  if (!moved) return
+  next.splice(toIdx, 0, moved)
+  persistColumnOrder(next)
+}
+
+function onColDragEnd(): void {
+  colDragKey.value = null
+  colDragOverKey.value = null
+}
+
+/* 行选择（批量操作） */
+const selectedIds = ref<Set<string>>(new Set())
+const selectedCount = computed(() => selectedIds.value.size)
+const allSelected = computed(
+  () => tableRows.value.length > 0 && tableRows.value.every((a) => selectedIds.value.has(a.id)),
+)
+
+function toggleRow(id: string): void {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = next
+}
+
+function toggleAllRows(): void {
+  selectedIds.value = allSelected.value ? new Set() : new Set(tableRows.value.map((a) => a.id))
+}
+
+function clearSelection(): void {
+  selectedIds.value = new Set()
+}
+
+// 行被筛掉 / 删除后清掉失效选中项，避免批量操作打到看不见的记录
+watch(tableRows, (rows) => {
+  const alive = new Set(rows.map((a) => a.id))
+  const next = new Set([...selectedIds.value].filter((id) => alive.has(id)))
+  if (next.size !== selectedIds.value.size) selectedIds.value = next
+})
+
+/* 批量操作 */
+const batchTargetColumn = ref('')
+const batchTag = ref('')
+const batchImportance = ref('')
+
+function runBatch(fn: () => number): void {
+  try {
+    fn()
+  } catch {
+    window.alert('保存失败：本地存储不可用或已满')
+  }
+}
+
+function batchMove(): void {
+  if (!batchTargetColumn.value) return
+  const ids = [...selectedIds.value]
+  runBatch(() => store.transitionMany(ids, batchTargetColumn.value, '批量移动看板列'))
+  clearSelection()
+}
+
+function batchAddTag(): void {
+  if (!batchTag.value.trim()) return
+  runBatch(() => store.updateTagsMany([...selectedIds.value], [batchTag.value], []))
+  batchTag.value = ''
+}
+
+function batchRemoveTypedTag(): void {
+  if (!batchTag.value.trim()) return
+  runBatch(() => store.updateTagsMany([...selectedIds.value], [], [batchTag.value]))
+  batchTag.value = ''
+}
+
+function batchSetImportance(): void {
+  const raw = batchImportance.value
+  if (raw === '') return
+  const n = Number(raw)
+  runBatch(() => store.setImportanceMany([...selectedIds.value], n > 0 ? n : undefined))
+  batchImportance.value = ''
+}
+
+function batchDelete(): void {
+  const count = selectedIds.value.size
+  if (!count) return
+  if (!window.confirm(`删除选中的 ${count} 条投递？其面试记录、题库条目与归档会一并清理，不可恢复。`)) return
+  runBatch(() => store.removeMany([...selectedIds.value], cleanupApplicationData))
+  clearSelection()
+}
+
+/* 表内新增记录（Notion 式末尾快速新增行） */
+const quickTitle = ref('')
+const quickCompany = ref('')
+
+function createInline(): void {
+  const title = quickTitle.value.trim()
+  const company = quickCompany.value.trim()
+  if (!title && !company) return
+  try {
+    const app = store.addApplication({
+      company,
+      title,
+      status: store.firstColumnId,
+      tags: [],
+      groups: [],
+      notes: '',
+    })
+    quickTitle.value = ''
+    quickCompany.value = ''
+    openDetail(app.id)
+  } catch {
+    window.alert('保存失败：本地存储不可用或已满')
+  }
 }
 
 /** 视图切换（三态分段） */
@@ -1180,18 +1362,106 @@ onBeforeUnmount(() => {
           </label>
         </div>
 
+        <!-- 批量操作栏（有选中项时出现） -->
+        <div
+          v-if="selectedCount"
+          class="flex flex-wrap items-center gap-2 border-b border-neutral-200 bg-neutral-50 px-3 py-2"
+        >
+          <span class="text-[11.5px] font-medium text-neutral-900">已选 {{ selectedCount }} 条</span>
+
+          <select v-model="batchTargetColumn" class="rounded border border-neutral-300 px-1.5 py-1 text-[11.5px]">
+            <option value="">移动到看板列…</option>
+            <option v-for="c in store.resolvedColumns" :key="c.id" :value="c.id">{{ c.name }}</option>
+          </select>
+          <button
+            class="rounded border border-neutral-300 px-2 py-1 text-[11.5px] text-neutral-600 hover:border-neutral-900 disabled:text-neutral-300"
+            :disabled="!batchTargetColumn"
+            @click="batchMove"
+          >
+            移动
+          </button>
+
+          <span class="mx-0.5 h-4 w-px bg-neutral-200" />
+
+          <input
+            v-model="batchTag"
+            placeholder="标签"
+            class="w-[92px] rounded border border-neutral-300 px-1.5 py-1 text-[11.5px]"
+            @keydown.enter="batchAddTag"
+          />
+          <button
+            class="rounded border border-neutral-300 px-2 py-1 text-[11.5px] text-neutral-600 hover:border-neutral-900 disabled:text-neutral-300"
+            :disabled="!batchTag.trim()"
+            @click="batchAddTag"
+          >
+            加标签
+          </button>
+          <button
+            class="rounded border border-neutral-300 px-2 py-1 text-[11.5px] text-neutral-600 hover:border-neutral-900 disabled:text-neutral-300"
+            :disabled="!batchTag.trim()"
+            @click="batchRemoveTypedTag"
+          >
+            去标签
+          </button>
+
+          <span class="mx-0.5 h-4 w-px bg-neutral-200" />
+
+          <select
+            v-model="batchImportance"
+            class="rounded border border-neutral-300 px-1.5 py-1 text-[11.5px]"
+            @change="batchSetImportance"
+          >
+            <option value="">重要性…</option>
+            <option v-for="n in 5" :key="n" :value="String(n)">{{ '★'.repeat(n) }}</option>
+            <option value="0">清除重要性</option>
+          </select>
+
+          <button
+            class="ml-auto rounded border border-red-300 px-2 py-1 text-[11.5px] text-red-600 transition-colors hover:border-red-500"
+            @click="batchDelete"
+          >
+            删除选中
+          </button>
+          <button class="rounded px-2 py-1 text-[11.5px] text-neutral-400 hover:text-neutral-900" @click="clearSelection">
+            取消选择
+          </button>
+        </div>
+
         <!-- 表格 -->
         <div class="min-h-0 flex-1 overflow-auto">
           <table class="w-full border-collapse text-left">
             <thead class="sticky top-0 z-10 bg-white">
               <tr class="border-b border-neutral-200">
+                <th class="w-[36px] py-2 pl-3">
+                  <input
+                    type="checkbox"
+                    class="h-3.5 w-3.5 accent-neutral-900"
+                    :checked="allSelected"
+                    :indeterminate.prop="selectedCount > 0 && !allSelected"
+                    :aria-label="allSelected ? '取消全选' : '全选当前视图'"
+                    @change="toggleAllRows"
+                  />
+                </th>
                 <th
                   v-for="f in tableFields"
                   :key="f.key"
-                  class="whitespace-nowrap py-2 pl-3 pr-3 text-[11px] font-medium text-neutral-400"
+                  draggable="true"
+                  class="whitespace-nowrap py-2 pl-3 pr-3 text-[11px] font-medium text-neutral-400 transition-colors"
+                  :class="[
+                    colDragKey && colDragKey !== f.key && colDragOverKey === f.key ? 'bg-neutral-100' : '',
+                    colDragKey === f.key ? 'opacity-40' : '',
+                  ]"
+                  @dragstart="onColDragStart(f, $event)"
+                  @dragover="onColDragOver(f, $event)"
+                  @drop.stop="onColDrop(f)"
+                  @dragend="onColDragEnd"
                 >
-                  <button class="flex items-center gap-1 hover:text-neutral-900" :title="`列设置：${f.name}`" @click="openColumnMenu(f)">
-                    <span class="text-[10px] text-neutral-300">{{ f.custom && f.type ? PROPERTY_TYPE_ICONS[f.type] : '·' }}</span>
+                  <button
+                    class="flex cursor-grab items-center gap-1 hover:text-neutral-900"
+                    :title="`列设置：${f.name}（可拖拽调整列顺序）`"
+                    @click="openColumnMenu(f)"
+                  >
+                    <span class="text-[10px] text-neutral-300">{{ f.custom && f.type ? PROPERTY_TYPE_ICONS[f.type] : '⠿' }}</span>
                     <span :class="propsStore.activeSorts[0]?.field === f.key ? 'text-neutral-900' : ''">{{ f.name }}</span>
                     <span v-if="propsStore.activeSorts[0]?.field === f.key" class="text-[10px]">
                       {{ propsStore.activeSorts[0]!.desc ? '↓' : '↑' }}
@@ -1201,8 +1471,8 @@ onBeforeUnmount(() => {
                 <th class="w-[64px] py-2 pr-3">
                   <button
                     class="rounded border border-dashed border-neutral-300 px-1.5 text-[12px] text-neutral-400 transition-colors hover:border-neutral-900 hover:text-neutral-900"
-                    title="新增属性"
-                    @click="addPropertyOpen = true"
+                    title="列管理：显示 / 隐藏 / 新增属性"
+                    @click="columnsOpen = true"
                   >
                     ＋
                   </button>
@@ -1213,9 +1483,19 @@ onBeforeUnmount(() => {
               <tr
                 v-for="app in tableRows"
                 :key="app.id"
-                class="cursor-pointer border-b border-neutral-100 transition-colors last:border-0 hover:bg-neutral-50"
+                class="cursor-pointer border-b border-neutral-100 transition-colors last:border-0"
+                :class="selectedIds.has(app.id) ? 'bg-neutral-100' : 'hover:bg-neutral-50'"
                 @click="openDetail(app.id)"
               >
+                <td class="py-1.5 pl-3" @click.stop>
+                  <input
+                    type="checkbox"
+                    class="h-3.5 w-3.5 accent-neutral-900"
+                    :checked="selectedIds.has(app.id)"
+                    :aria-label="`选择 ${app.title || '未命名岗位'}`"
+                    @change="toggleRow(app.id)"
+                  />
+                </td>
                 <td v-for="f in tableFields" :key="f.key" class="max-w-[220px] py-1.5 pl-3 pr-3 align-middle">
                   <PropertyCell
                     v-if="f.custom"
@@ -1261,6 +1541,33 @@ onBeforeUnmount(() => {
                   </button>
                 </td>
               </tr>
+
+              <!-- 表内快速新增（Notion 式末尾行） -->
+              <tr class="border-b border-neutral-100">
+                <td :colspan="tableFields.length + 2" class="py-2 pl-3 pr-3">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <input
+                      v-model="quickTitle"
+                      class="min-w-[160px] flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-[12.5px] placeholder:text-neutral-300 hover:border-neutral-200 focus:border-neutral-900 focus:outline-none"
+                      placeholder="＋ 新增投递：输入岗位名称后回车"
+                      @keydown.enter="createInline"
+                    />
+                    <input
+                      v-model="quickCompany"
+                      class="w-[140px] rounded border border-transparent bg-transparent px-1 py-0.5 text-[12.5px] placeholder:text-neutral-300 hover:border-neutral-200 focus:border-neutral-900 focus:outline-none"
+                      placeholder="公司（可留空）"
+                      @keydown.enter="createInline"
+                    />
+                    <button
+                      class="rounded border border-neutral-300 px-2 py-0.5 text-[11.5px] text-neutral-600 transition-colors hover:border-neutral-900 hover:text-neutral-900 disabled:text-neutral-300"
+                      :disabled="!quickTitle.trim() && !quickCompany.trim()"
+                      @click="createInline"
+                    >
+                      新增
+                    </button>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
           <div v-if="!tableRows.length" class="py-12 text-center text-[12px] text-neutral-400">
@@ -1282,7 +1589,7 @@ onBeforeUnmount(() => {
         >
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="min-w-0">
-              <div class="truncate text-[14px] font-semibold text-neutral-900">{{ app.title }}</div>
+              <div class="truncate text-[14px] font-semibold text-neutral-900">{{ app.title || '未命名岗位' }}</div>
               <div class="mt-0.5 truncate text-[12px] text-neutral-500">
                 {{ app.company }}<span v-if="app.channel"> · {{ app.channel }}</span>
               </div>
@@ -1416,6 +1723,43 @@ onBeforeUnmount(() => {
           </button>
           <button class="rounded-lg border border-neutral-900 px-4 py-1.5 text-[12.5px] text-neutral-900" @click="showSettings = false">
             完成
+          </button>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- 列管理：显示 / 隐藏 / 新增属性 -->
+    <Modal v-if="columnsOpen" title="列管理" max-width="max-w-md" @close="columnsOpen = false">
+      <div class="space-y-4">
+        <p class="text-[11.5px] leading-relaxed text-neutral-400">
+          与其它功能关联的内置字段（公司 / 岗位 / 看板列 / 渠道…）不会被删除，只是不占列表；内容允许留空。
+        </p>
+        <div class="max-h-[46vh] space-y-0.5 overflow-y-auto pr-1">
+          <label
+            v-for="f in allFields"
+            :key="f.key"
+            class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-neutral-50"
+          >
+            <input
+              type="checkbox"
+              class="h-3.5 w-3.5 accent-neutral-900"
+              :checked="isFieldVisible(f.key)"
+              @change="setFieldVisible(f.key, ($event.target as HTMLInputElement).checked)"
+            />
+            <span class="text-[10px] text-neutral-300">{{ f.custom && f.type ? PROPERTY_TYPE_ICONS[f.type] : '·' }}</span>
+            <span class="flex-1 truncate text-[12.5px] text-neutral-700">{{ f.name }}</span>
+            <span class="shrink-0 text-[10.5px] text-neutral-300">{{ f.custom ? '自定义' : '内置' }}</span>
+          </label>
+        </div>
+        <div class="flex items-center justify-between gap-2 border-t border-neutral-200 pt-3">
+          <button class="text-[12px] text-neutral-400 hover:text-neutral-900" @click="showAllFieldsAgain">
+            显示全部
+          </button>
+          <button
+            class="rounded-lg border border-neutral-900 px-4 py-1.5 text-[12.5px] text-neutral-900"
+            @click="columnsOpen = false; addPropertyOpen = true"
+          >
+            新增属性
           </button>
         </div>
       </div>

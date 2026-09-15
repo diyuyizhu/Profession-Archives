@@ -41,7 +41,7 @@ const form = ref({
   applied_at: props.app.applied_at ?? '',
 })
 
-const valid = computed(() => form.value.company.trim() && form.value.title.trim())
+// 公司与岗位允许留空（既可先建条目再补信息，也不影响自动采集/导入的宽松场景）
 const saveError = ref('')
 
 /* ── 焦点管理：进入聚焦首字段，退出还原到触发按钮 ── */
@@ -61,7 +61,6 @@ function onKeydown(e: KeyboardEvent): void {
 }
 
 function submit(): void {
-  if (!valid.value) return
   try {
     emit('save', {
       company: form.value.company.trim(),
@@ -228,14 +227,14 @@ function submit(): void {
           />
         </label>
 
-        <!-- 校验提示 / 保存错误 -->
+        <!-- 保存错误 / 留空提示 -->
         <div class="min-h-[16px] text-[11px]" :class="saveError ? 'text-red-600' : 'text-neutral-400'">
-          {{ saveError || (valid ? '' : '请至少填写公司与岗位名称') }}
+          {{ saveError || '公司与岗位可以留空，之后再补' }}
         </div>
 
         <div class="flex items-center justify-end gap-3">
           <SecondaryButton type="button" @click="emit('close')">取消</SecondaryButton>
-          <PrimaryButton type="submit" :disabled="!valid">保存修改</PrimaryButton>
+          <PrimaryButton type="submit">保存修改</PrimaryButton>
         </div>
       </form>
     </div>

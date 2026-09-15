@@ -306,6 +306,57 @@ export const useApplicationStore = defineStore('application', () => {
     return transition(id, next)
   }
 
+  /* ── 批量操作（表格视图多选） ── */
+
+  /** 批量迁移到指定看板列 */
+  function transitionMany(ids: string[], to: ApplicationStatus, note?: string): number {
+    let n = 0
+    for (const id of ids) if (transition(id, to, note)) n++
+    return n
+  }
+
+  /** 批量加 / 去标签 */
+  function updateTagsMany(ids: string[], add: string[], remove: string[]): number {
+    let n = 0
+    for (const id of ids) {
+      const app = applications.value.find((a) => a.id === id)
+      if (!app) continue
+      const set = new Set(app.tags)
+      for (const t of add) if (t.trim()) set.add(t.trim())
+      for (const t of remove) set.delete(t)
+      touch(app, { tags: [...set] })
+      n++
+    }
+    if (n) persist()
+    return n
+  }
+
+  /** 批量设置重要性（undefined = 清除） */
+  function setImportanceMany(ids: string[], value: number | undefined): number {
+    let n = 0
+    for (const id of ids) {
+      const app = applications.value.find((a) => a.id === id)
+      if (!app) continue
+      touch(app, { importance: value })
+      n++
+    }
+    if (n) persist()
+    return n
+  }
+
+  /** 批量删除（关联的面试 / 题库 / 归档由调用方通过 onDeleted 清理） */
+  function removeMany(ids: string[], onDeleted?: (app: Application) => void): number {
+    let n = 0
+    for (const id of ids) {
+      const app = applications.value.find((a) => a.id === id)
+      if (!app) continue
+      onDeleted?.(app)
+      removeApplication(id)
+      n++
+    }
+    return n
+  }
+
   /** 清空全部投递 */
   function clearAll(): void {
     applications.value = []
@@ -503,6 +554,10 @@ export const useApplicationStore = defineStore('application', () => {
     importApplications,
     setProperty,
     clearPropertyValues,
+    transitionMany,
+    updateTagsMany,
+    setImportanceMany,
+    removeMany,
     countInColumn,
     columnName,
     appsInColumn,

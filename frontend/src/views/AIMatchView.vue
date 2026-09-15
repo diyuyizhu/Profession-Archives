@@ -80,7 +80,7 @@ function applySummary(): void {
           >
             <option :value="null" disabled>选择有 JD 的投递…</option>
             <option v-for="app in jdApps" :key="app.id" :value="app.id">
-              {{ app.company }} · {{ app.title }}
+              {{ app.company || '未填公司' }} · {{ app.title || '未命名岗位' }}
             </option>
           </select>
           <span v-if="!jdApps.length" class="text-[11px] text-neutral-400">
