@@ -1,6 +1,6 @@
 {
   "name": "profession-archives",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "本地优先的个人生涯大脑 + 求职面试全生命周期管理平台",
   "type": "module",

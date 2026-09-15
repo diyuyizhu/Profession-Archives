@@ -1,6 +1,6 @@
 {
     "name": "@pa/server",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "Node/Fastify 后端（开发/备用，桌面端不启动；见 server/README.md）",
     "private": true,
     "type": "module",
