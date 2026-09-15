@@ -14,12 +14,10 @@ import type {
   Application,
   ApplicationPayload,
   ApplicationStatus,
-  ApplyMethod,
   BoardColumn,
   BoardRole,
   PropertyType,
 } from '@pa/shared'
-import { APPLY_METHOD_LABELS } from '@pa/shared'
 import { groupByStatus, nextStage, statusMeta } from '@pa/shared/application'
 import { COLUMN_PRESETS, ROLE_LABELS } from '@pa/shared/board'
 import {
@@ -51,6 +49,7 @@ import { useArchivesStore } from '@/stores/archives'
 import { FIELD_LABELS, useBoardPrefsStore } from '@/stores/boardPrefs'
 import { useInterviewStore } from '@/stores/interview'
 import { useProfileStore } from '@/stores/profile'
+import BuiltinCell from '@/components/property/BuiltinCell.vue'
 import PropertyCell from '@/components/property/PropertyCell.vue'
 import { usePropertiesStore } from '@/stores/properties'
 import { useQuestionBankStore } from '@/stores/questionBank'
@@ -154,17 +153,7 @@ const sortedApps = computed(() =>
 )
 
 /* ── 多维表格：字段 / 筛选 / 排序 / 视图 ── */
-
-/** 内置字段的表格文本（自定义属性走 PropertyCell） */
-function getBuiltinText(app: Application, key: string): string {
-  if (key === 'apply_method') {
-    return app.apply_method ? (APPLY_METHOD_LABELS[app.apply_method as ApplyMethod] ?? '—') : '—'
-  }
-  const v = (app as unknown as Record<string, unknown>)[key]
-  if (v === undefined || v === null || v === '') return '—'
-  if (Array.isArray(v)) return v.length ? v.join('、') : '—'
-  return String(v)
-}
+/* 单元格渲染：自定义属性 → PropertyCell；内置字段 → BuiltinCell（均支持就地编辑） */
 
 /** 全部可选字段（内置字段 + 自定义属性） */
 const allFields = computed<ResolvedField[]>(() => resolveFields(propsStore.properties))
@@ -1503,37 +1492,7 @@ onBeforeUnmount(() => {
                     :value="app.properties?.[f.key]"
                     @update="store.setProperty(app.id, f.key, $event)"
                   />
-                  <template v-else-if="f.key === 'status'">
-                    <span
-                      class="whitespace-nowrap rounded-full border px-2 py-0.5 text-[10.5px]"
-                      :class="[statusMeta(app.status).chip, statusMeta(app.status).text]"
-                    >
-                      {{ statusMeta(app.status).label }}
-                    </span>
-                  </template>
-                  <template v-else-if="f.key === 'title'">
-                    <span class="truncate text-[12.5px] font-medium text-neutral-900">{{ app.title || '未命名岗位' }}</span>
-                  </template>
-                  <template v-else-if="f.key === 'importance'">
-                    <span class="text-[11.5px] text-neutral-600">{{ app.importance ? '★'.repeat(app.importance) : '—' }}</span>
-                  </template>
-                  <template v-else-if="f.key === 'tags' || f.key === 'groups'">
-                    <span class="flex flex-wrap gap-1">
-                      <span
-                        v-for="t in (f.key === 'tags' ? app.tags : (app.groups ?? []))"
-                        :key="t"
-                        class="rounded bg-neutral-100 px-1 py-0.5 text-[10px] text-neutral-600"
-                      >
-                        {{ f.key === 'tags' ? '#' : '' }}{{ t }}
-                      </span>
-                    </span>
-                  </template>
-                  <template v-else-if="f.key === 'updated_at'">
-                    <span class="font-mono text-[11px] text-neutral-400">{{ app.updated_at.slice(0, 10) }}</span>
-                  </template>
-                  <template v-else>
-                    <span class="block truncate text-[12px] text-neutral-500">{{ getBuiltinText(app, f.key) }}</span>
-                  </template>
+                  <BuiltinCell v-else :app="app" :field="f" />
                 </td>
                 <td class="py-1.5 pr-3 text-right">
                   <button class="text-[11px] text-neutral-400 hover:text-neutral-900" @click.stop="openDetail(app.id)">
