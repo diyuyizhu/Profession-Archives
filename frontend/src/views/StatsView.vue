@@ -37,12 +37,16 @@ const overview = computed(() => {
   ]
 })
 
-/** 漏斗展示行：已投 → 简历被读 → 一面 → … → Offer（数据驱动，跳过备选池） */
+/** 漏斗展示行：跳过首列（备选池），末尾补成功列（Offer） */
 const funnel = computed(() => {
+  const first = store.columns[0]?.id
   const rows = s.value.funnel
-    .filter((r) => r.status !== 'backlog')
+    .filter((r) => r.status !== first)
     .map((r) => ({ label: r.label, count: r.count }))
-  rows.push({ label: 'Offer', count: s.value.byStatus.offer ?? 0 })
+  const successIds = store.columns.filter((c) => c.role === 'success').map((c) => c.id)
+  const count = successIds.reduce((n, id) => n + (s.value.byStatus[id] ?? 0), 0)
+  const label = successIds.length ? store.columnName(successIds[0]!) : 'Offer'
+  rows.push({ label, count })
   return rows
 })
 

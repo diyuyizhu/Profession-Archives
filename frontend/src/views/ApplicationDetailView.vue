@@ -287,7 +287,8 @@ function onAdvance(): void {
 function onTerminal(to: ApplicationStatus): void {
   if (!app.value) return
   let reason: string | undefined
-  if (to === 'rejected') {
+  const targetIsFailure = appStore.columns.find((c) => c.id === to)?.role === 'failure'
+  if (targetIsFailure) {
     const input = window.prompt(`标记拒绝。失败原因？`, app.value.reject_reason ?? '')
     if (input === null) return
     reason = input
@@ -386,7 +387,7 @@ onBeforeUnmount(() => {
               推进 ▸
             </button>
             <button
-              v-for="target in transitionTargets(app!.status, app!.total_rounds ?? 3).filter((s) => s !== app!.status)"
+              v-for="target in transitionTargets(app!.status)"
               :key="target"
               class="rounded-lg border border-neutral-300 px-3 py-1.5 text-[12px] text-neutral-600 hover:border-neutral-900 hover:text-neutral-900"
               @click="onTerminal(target)"

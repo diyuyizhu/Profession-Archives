@@ -277,8 +277,24 @@ export type RoundStage = `round_${number}`
 export const APPLICATION_TERMINALS = ['offer', 'rejected', 'withdrawn'] as const
 export type ApplicationTerminal = (typeof APPLICATION_TERMINALS)[number]
 
-/** 完整状态（前置 ∪ 动态轮次 ∪ 终态） */
-export type ApplicationStatus = ApplicationPrefixStage | RoundStage | ApplicationTerminal
+/**
+ * 看板列 id（= 投递当前所在列）。
+ *
+ * 已由「固定状态机」演进为「用户自定义列」：内置阶段沿用历史 id
+ * （backlog / applied / viewed / round_N / offer / rejected / withdrawn），
+ * 用户新建的列用 `col_*`。列的顺序与角色定义见 shared/board.ts。
+ */
+export type ApplicationStatus = string
+
+/** 列角色：normal 进行中（参与漏斗）；success / failure / archived 视为终态列 */
+export type BoardRole = 'normal' | 'success' | 'failure' | 'archived'
+
+/** 看板列定义（用户可改名 / 拖拽排序 / 增删，localStorage 持久化） */
+export interface BoardColumn {
+  id: string
+  name: string
+  role: BoardRole
+}
 
 /** 状态元信息：看板列 / 徽章共用，单一来源（round 阶段由 statusMeta() 动态生成） */
 export interface ApplicationStatusMeta {
@@ -418,14 +434,14 @@ export interface ApplicationEvent {
   note?: string
 }
 
-/** 看板分组（按状态） */
-export type ApplicationBoard = Record<ApplicationStatus, Application[]>
+/** 看板分组（按列 id） */
+export type ApplicationBoard = Record<string, Application[]>
 
 /** 漏斗 / 渠道 / 时间聚合结果 */
 export interface ApplicationStats {
-  /** 每个状态当前持有数量 */
-  byStatus: Record<ApplicationStatus, number>
-  /** 漏斗：每个阶段曾经到达的数量（含终态到达数） */
+  /** 每个列当前持有数量（key = 列 id） */
+  byStatus: Record<string, number>
+  /** 漏斗：每个进行中列曾经到达的数量（按列顺序） */
   funnel: Array<{ status: ApplicationStatus; label: string; count: number }>
   /** 按渠道分布 */
   byChannel: Array<{ channel: string; count: number }>

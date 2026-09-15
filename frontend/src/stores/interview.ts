@@ -146,7 +146,7 @@ export const useInterviewStore = defineStore('interview', () => {
     let statusChanged = false
     let newStatus: string | undefined
     if (app) {
-      const target = applyInterviewResult(app.status, payload.result, app.total_rounds ?? 3)
+      const target = applyInterviewResult(app.status, payload.result)
       if (target && target !== app.status) {
         const note =
           payload.result === 'passed'
@@ -170,7 +170,7 @@ export const useInterviewStore = defineStore('interview', () => {
       const appStore = useApplicationStore()
       const app = appStore.applications.find((a) => a.id === interview.application_id)
       if (app) {
-        const target = applyInterviewResult(app.status, patch.result, app.total_rounds ?? 3)
+        const target = applyInterviewResult(app.status, patch.result)
         if (target && target !== app.status) {
           appStore.transition(app.id, target, `第 ${interview.round} 轮面试结果修正`)
         }

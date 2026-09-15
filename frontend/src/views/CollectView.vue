@@ -83,7 +83,7 @@ function submit(): void {
     url: form.value.url.trim() || undefined,
     jd: form.value.jd.trim() || undefined,
     apply_method: form.value.apply_method || undefined,
-    status: form.value.applied ? 'applied' : 'backlog',
+    status: form.value.applied ? store.appliedColumnId : store.firstColumnId,
     tags: parseTags(form.value.tagsText),
     groups: [],
     notes: form.value.notes.trim(),

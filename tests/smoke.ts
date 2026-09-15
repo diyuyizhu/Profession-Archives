@@ -6,11 +6,20 @@ import {
   boardStages,
   buildApplicationStats,
   canTransition,
+  isTerminal,
   isValidStatus,
   nextStage,
   statusMeta,
 } from '../shared/src/application.ts'
 import { applyInterviewResult, nextRoundNumber } from '../shared/src/interview.ts'
+import {
+  DEFAULT_BOARD_COLUMNS,
+  ensureColumnsForData,
+  getActiveBoardColumns,
+  moveColumn,
+  setActiveBoardColumns,
+} from '../shared/src/board.ts'
+import type { BoardColumn } from '../shared/src/index.ts'
 import { parseEmailForApplication } from '../shared/src/email.ts'
 import { buildResumeDraft, matchJdToProfile, extractHighlights } from '../shared/src/ai.ts'
 import { groupSkillHistory, planProgress } from '../shared/src/skill.ts'
@@ -29,15 +38,17 @@ function assert(cond: boolean, msg: string): void {
 }
 
 async function main(): Promise<void> {
-  console.log('== shared: 状态机（动态轮次）==')
-  assert(isValidStatus('round_8') && !isValidStatus('round_9') && !isValidStatus('final'), '状态合法性')
-  assert(nextStage('viewed', 3) === 'round_1', '被读→一面')
-  assert(nextStage('round_2', 3) === 'round_3', '二面→三面')
-  assert(nextStage('round_3', 3) === null, '最后一轮不再推进')
-  assert(canTransition('round_1' as never, 'round_4' as never), '跳级前进')
-  assert(!canTransition('round_4' as never, 'round_2' as never), '后退禁止')
-  assert(statusMeta('round_4').label === '第 4 面', '默认非终面')
-  assert(statusMeta('round_4', 4).label === '终面', '传 total=4 为终面')
+  console.log('== shared: 看板列（内置默认）==')
+  assert(isValidStatus('backlog') && isValidStatus('col_abc123'), '合法列 id（含自定义列）')
+  assert(!isValidStatus('') && !isValidStatus('x'.repeat(65)), '空 / 超长列 id 非法')
+  assert(nextStage('viewed') === 'round_1', '被读→第 1 面')
+  assert(nextStage('round_2') === 'round_3', '第 2 面→第 3 面')
+  assert(nextStage('round_3') === 'offer', '最后一个进行中列→成功列')
+  assert(nextStage('offer') === null, '终态列不再推进')
+  assert(!canTransition('round_1', 'round_1'), '原地不动不算迁移')
+  assert(canTransition('round_4', 'round_2'), '列可自由移动（含回退修正）')
+  assert(statusMeta('offer').terminal && !statusMeta('applied').terminal, '终态由列角色决定')
+  assert(statusMeta('round_4').label === '第 4 面', '未配置的历史列回退到内置命名')
 
   console.log('== shared: 统计 / 漏斗 / 看板列 ==')
   const ts = new Date().toISOString()
@@ -58,10 +69,35 @@ async function main(): Promise<void> {
   assert(f.round_1 >= 2 && f.round_3 >= 1, '漏斗"曾经到达"（含终态投递）')
   assert(stats.byMonth[0]!.month.startsWith(String(new Date().getFullYear())), 'byMonth 最新在前')
 
+  console.log('== shared: 自定义看板列 ==')
+  const custom: BoardColumn[] = [
+    { id: 'inbox', name: '收件箱', role: 'normal' },
+    { id: 'chat', name: '沟通中', role: 'normal' },
+    { id: 'done', name: '拿到', role: 'success' },
+    { id: 'no', name: '没了', role: 'failure' },
+  ]
+  setActiveBoardColumns(custom)
+  assert(nextStage('inbox') === 'chat', '列顺序决定推进')
+  assert(nextStage('chat') === 'done', '最后一个进行中列→成功列')
+  assert(canTransition('no', 'inbox'), '可从终态列拉回修正')
+  assert(statusMeta('chat').label === '沟通中', '列名即显示名')
+  assert(isTerminal('done') && isTerminal('no') && !isTerminal('chat'), 'success/failure 为终态列')
+  assert(getActiveBoardColumns().length === 4, '注册表随 setActiveBoardColumns 更新')
+  assert(applyInterviewResult('inbox', 'passed') === 'chat', 'C2 通过→下一列')
+  assert(applyInterviewResult('chat', 'passed') === 'done', 'C2 最后一列通过→成功列')
+  assert(applyInterviewResult('inbox', 'failed') === 'no', 'C2 未通过→失败列')
+  assert(applyInterviewResult('done', 'passed') === null, '终态列不流转')
+  // 数据里出现配置中没有的列 → 自动补列（卡片不会因删列配置而消失）
+  const patched = ensureColumnsForData(custom, [{ status: 'legacy_col' }])
+  assert(patched.some((c) => c.id === 'legacy_col'), '未知列自动补列')
+  assert(patched.findIndex((c) => c.id === 'legacy_col') < patched.findIndex((c) => c.id === 'done'), '补列插在终态列之前')
+  assert(moveColumn(custom, 0, 2).map((c) => c.id).join() === 'chat,done,inbox,no', '列重排')
+
   console.log('== shared: 面试 ==')
-  assert(applyInterviewResult('round_2', 'passed', 3) === 'round_3', 'C2 通过推进')
-  assert(applyInterviewResult('round_3', 'passed', 3) === 'offer', '最后一轮通过→Offer')
-  assert(applyInterviewResult('rejected', 'passed', 3) === null, '终态不流转')
+  setActiveBoardColumns(DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c })))
+  assert(applyInterviewResult('round_2', 'passed') === 'round_3', 'C2 通过推进')
+  assert(applyInterviewResult('round_3', 'passed') === 'offer', '最后一轮通过→Offer')
+  assert(applyInterviewResult('rejected', 'passed') === null, '终态不流转')
   const ivs = Array.from({ length: 9 }, (_, i) => ({ round: i + 1 })) as never
   assert(nextRoundNumber(ivs as never, 'x') <= 8, '轮次封顶 8')
 

@@ -1,13 +1,22 @@
 <script setup lang="ts">
 /**
- * 投递看板（B1）：按状态机的多列看板 / 列表视图。
+ * 投递看板（B1）：用户自定义多列看板 / 列表 / 全流程视图。
+ * - 列可自定义：拖拽排序、改名、改角色（进行中/成功/失败/归档）、增删
+ * - 删列时处置列内卡片：全部迁移 / 逐卡指定 / 一并删除
  * - 筛选：关键词 / 渠道 / 标签分类；排序：更新时间 / 投递时间 / 重要性 / 标题
  * - 「呈现设置」选择视图、默认排序、卡片显示字段（需求：呈现方式可配置）
  * - 点卡片进入投递详情档案（连接面试 / 复盘 / 归档）
- * - 操作：推进、标记终态（Offer/拒绝/放弃）、编辑、删除
+ * - 操作：推进、移动到任意列、编辑、删除
  */
-import type { Application, ApplicationPayload, ApplicationStatus } from '@pa/shared'
+import type {
+  Application,
+  ApplicationPayload,
+  ApplicationStatus,
+  BoardColumn,
+  BoardRole,
+} from '@pa/shared'
 import { groupByStatus, nextStage, statusMeta } from '@pa/shared/application'
+import { COLUMN_PRESETS, ROLE_LABELS } from '@pa/shared/board'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -151,10 +160,8 @@ function eventsOf(appId: string): Array<{ from: ApplicationStatus | null; to: Ap
     .sort((a, b) => (a.at < b.at ? -1 : 1))
 }
 
-/** 全流程泳道阶段节点：前置 + 该投递的轮次（到达/当前状态） */
-function pipelineStages(
-  app: Application,
-): Array<{
+/** 全流程泳道阶段节点：按当前看板列顺序渲染（到达 / 当前所在列） */
+function pipelineStages(app: Application): Array<{
   status: ApplicationStatus
   label: string
   reached: boolean
@@ -162,17 +169,14 @@ function pipelineStages(
   dot: string
   text: string
 }> {
-  const total = app.total_rounds ?? 3
-  const stages: ApplicationStatus[] = ['backlog', 'applied', 'viewed']
-  for (let i = 1; i <= total; i++) stages.push(`round_${i}`)
   const reachedSet = new Set(eventsOf(app.id).map((e) => e.to))
-  return stages.map((s) => {
-    const meta = statusMeta(s, total)
+  return store.resolvedColumns.map((col) => {
+    const meta = statusMeta(col.id)
     return {
-      status: s,
-      label: meta.label,
-      reached: reachedSet.has(s) || app.status === s,
-      current: app.status === s,
+      status: col.id,
+      label: col.name,
+      reached: reachedSet.has(col.id) || app.status === col.id,
+      current: app.status === col.id,
       dot: meta.dot,
       text: meta.text,
     }
@@ -194,14 +198,19 @@ const menuApp = computed<Application | null>(() => {
 const menuTargets = computed(() => {
   const app = menuApp.value
   if (!app) return []
-  return transitionTargets(app.status, app.total_rounds ?? 3).filter((s) => s !== app.status)
+  return transitionTargets(app.status)
 })
 
 /** 正在编辑的投递（null = 不显示弹窗） */
 const editing = ref<Application | null>(null)
 
 function canAdvance(app: Application): boolean {
-  return nextStage(app.status, app.total_rounds ?? 3) !== null
+  return nextStage(app.status) !== null
+}
+
+/** 是否失败列（选中它时提示填写拒绝原因） */
+function isFailureTarget(id: ApplicationStatus): boolean {
+  return store.columns.find((c) => c.id === id)?.role === 'failure'
 }
 
 function closeMenu(): void {
@@ -275,7 +284,7 @@ async function specializeResume(app: Application): Promise<void> {
 
 function onTerminal(app: Application, to: ApplicationStatus): void {
   let reason: string | undefined
-  if (to === 'rejected') {
+  if (isFailureTarget(to)) {
     const input = window.prompt(`标记「${app.company} · ${app.title}」为拒绝。失败原因？`, app.reject_reason ?? '')
     if (input === null) return
     reason = input
@@ -283,8 +292,8 @@ function onTerminal(app: Application, to: ApplicationStatus): void {
   safeStatusAction(() => store.transition(app.id, to, undefined, reason))
 }
 
-function onRemove(app: Application): void {
-  if (!window.confirm(`删除「${app.company} · ${app.title}」及其全部事件？`)) return
+/** 卡片被真正删除时，清理其关联数据（面试记录 / 题库 / 归档） */
+function cleanupApplicationData(app: Application): void {
   const interviewStore = useInterviewStore()
   const questionBank = useQuestionBankStore()
   const archives = useArchivesStore()
@@ -293,6 +302,11 @@ function onRemove(app: Application): void {
   }
   interviewStore.removeByApplication(app.id)
   archives.removeByApplication(app.id) // 清理孤儿归档（录制/附件）
+}
+
+function onRemove(app: Application): void {
+  if (!window.confirm(`删除「${app.company} · ${app.title}」及其全部事件？`)) return
+  cleanupApplicationData(app)
   store.removeApplication(app.id)
   closeMenu()
 }
@@ -315,6 +329,157 @@ function onSaveEdit(payload: ApplicationPayload): void {
     })
   }
   editing.value = null
+}
+
+/* ── 看板列管理（B1）：排序 / 改名 / 角色 / 增删 ── */
+
+const columnMenuId = ref<string | null>(null)
+const renameColumnId = ref<string | null>(null)
+const renameDraft = ref('')
+
+/** 拖拽排序列 */
+const dragColumnId = ref<string | null>(null)
+const dragOverIndex = ref<number | null>(null)
+
+function toggleColumnMenu(col: BoardColumn): void {
+  columnMenuId.value = columnMenuId.value === col.id ? null : col.id
+  renameColumnId.value = null
+}
+
+function openRename(col: BoardColumn): void {
+  renameColumnId.value = col.id
+  renameDraft.value = col.name
+}
+
+function commitRename(): void {
+  if (!renameColumnId.value) return
+  store.updateColumn(renameColumnId.value, { name: renameDraft.value })
+  renameColumnId.value = null
+  columnMenuId.value = null
+}
+
+function setColumnRole(col: BoardColumn, role: BoardRole): void {
+  store.updateColumn(col.id, { role })
+}
+
+function shiftColumn(col: BoardColumn, delta: number): void {
+  const from = store.columns.findIndex((c) => c.id === col.id)
+  if (from < 0) return
+  store.moveColumnTo(col.id, from + delta)
+  columnMenuId.value = null
+}
+
+function onColumnDragStart(col: BoardColumn, e: DragEvent): void {
+  dragColumnId.value = col.id
+  e.dataTransfer?.setData('text/plain', col.id)
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+}
+
+function onColumnDragOver(index: number, e: DragEvent): void {
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  dragOverIndex.value = index
+}
+
+function onColumnDrop(index: number): void {
+  const id = dragColumnId.value
+  dragColumnId.value = null
+  dragOverIndex.value = null
+  if (!id) return
+  const from = store.columns.findIndex((c) => c.id === id)
+  if (from < 0) return
+  // 目标位置用「列中心线」判断：拖到下标之前的列右半边 → 插到它后面
+  store.moveColumnTo(id, from < index ? index : index)
+  columnMenuId.value = null
+}
+
+function onColumnDragEnd(): void {
+  dragColumnId.value = null
+  dragOverIndex.value = null
+}
+
+/* 加看板 */
+const addOpen = ref(false)
+const addPresetId = ref('')
+const addName = ref('')
+const addRole = ref<BoardRole>('normal')
+
+/** 还没在列里的内置阶段（可「加回来」，如第 4~8 面、放弃列） */
+const availablePresets = computed(() =>
+  COLUMN_PRESETS.filter((p) => !store.columns.some((c) => c.id === p.id)),
+)
+
+function openAddColumn(): void {
+  addOpen.value = true
+  addPresetId.value = availablePresets.value[0]?.id ?? ''
+  addName.value = ''
+  addRole.value = 'normal'
+}
+
+function submitAddPreset(): void {
+  const preset = COLUMN_PRESETS.find((p) => p.id === addPresetId.value)
+  if (!preset) return
+  store.addColumn(preset.name, preset.role, preset.id)
+  addOpen.value = false
+}
+
+function submitAddCustom(): void {
+  if (!addName.value.trim()) return
+  store.addColumn(addName.value, addRole.value)
+  addOpen.value = false
+}
+
+/* 删看板：列内卡片处置 */
+const removingColumn = ref<BoardColumn | null>(null)
+const removeMode = ref<'move' | 'perCard' | 'delete'>('move')
+const removeTargetId = ref('')
+const perCardPlan = ref<Record<string, string>>({})
+
+/** 可作为迁移目标的其它列 */
+const removeTargets = computed(() =>
+  removingColumn.value ? store.columns.filter((c) => c.id !== removingColumn.value!.id) : [],
+)
+/** 待处置的卡片 */
+const removingApps = computed(() =>
+  removingColumn.value ? store.appsInColumn(removingColumn.value.id) : [],
+)
+/** 逐卡模式下未指定去向的卡片数（>0 时禁止提交） */
+const unassignedCount = computed(() =>
+  removeMode.value === 'perCard'
+    ? removingApps.value.filter((a) => !perCardPlan.value[a.id]).length
+    : 0,
+)
+
+function openRemoveColumn(col: BoardColumn): void {
+  columnMenuId.value = null
+  removingColumn.value = col
+  removeMode.value = 'move'
+  const fallback = store.columns.find((c) => c.id !== col.id)?.id ?? ''
+  removeTargetId.value = fallback
+  const plan: Record<string, string> = {}
+  for (const app of store.appsInColumn(col.id)) plan[app.id] = fallback
+  perCardPlan.value = plan
+}
+
+function confirmRemoveColumn(): void {
+  const col = removingColumn.value
+  if (!col) return
+  const count = store.countInColumn(col.id)
+  if (removeMode.value === 'delete' && count > 0) {
+    if (!window.confirm(`确认连同 ${count} 条投递一起删除？其面试记录与归档也会一并清理，不可恢复。`)) return
+  }
+  const plan =
+    removeMode.value === 'move'
+      ? ({ mode: 'move', targetId: removeTargetId.value } as const)
+      : removeMode.value === 'delete'
+        ? ({ mode: 'delete' } as const)
+        : ({ mode: 'perCard', assignments: { ...perCardPlan.value } } as const)
+  try {
+    store.removeColumn(col.id, plan, cleanupApplicationData)
+  } catch {
+    window.alert('保存失败：本地存储不可用或已满')
+  }
+  removingColumn.value = null
 }
 
 /* ── 菜单关闭治理 ── */
@@ -466,20 +631,99 @@ onBeforeUnmount(() => {
       <section v-if="prefs.viewMode === 'board'" class="min-h-0 flex-1 overflow-x-auto">
         <div class="flex h-full gap-4 pb-2" style="min-width: max-content">
           <div
-            v-for="status in store.boardStatuses"
-            :key="status"
-            class="flex w-[252px] shrink-0 flex-col rounded-xl border border-neutral-200 bg-neutral-50"
+            v-for="(col, index) in store.resolvedColumns"
+            :key="col.id"
+            class="flex w-[252px] shrink-0 flex-col rounded-xl border bg-neutral-50 transition-colors"
+            :class="[
+              dragColumnId && dragColumnId !== col.id && dragOverIndex === index
+                ? 'border-neutral-900'
+                : 'border-neutral-200',
+              dragColumnId === col.id ? 'opacity-50' : '',
+            ]"
+            @dragover="onColumnDragOver(index, $event)"
+            @drop.stop="onColumnDrop(index)"
           >
-            <div class="flex items-center gap-2 px-3 py-3">
-              <span class="h-2 w-2 rounded-full" :class="statusMeta(status).dot" />
-              <span class="text-[13px] font-semibold text-neutral-900">{{ statusMeta(status).label }}</span>
-              <span class="font-mono text-[11px] text-neutral-400">{{ countOf(status) }}</span>
-              <span v-if="statusMeta(status).terminal" class="ml-auto text-[10px] text-neutral-400">终态</span>
+            <div
+              class="flex items-center gap-2 px-3 py-3"
+              draggable="true"
+              @dragstart="onColumnDragStart(col, $event)"
+              @dragend="onColumnDragEnd"
+            >
+              <span class="cursor-grab select-none text-neutral-300" aria-hidden="true" title="拖拽调整列顺序">⠿</span>
+              <span class="h-2 w-2 shrink-0 rounded-full" :class="statusMeta(col.id).dot" />
+              <input
+                v-if="renameColumnId === col.id"
+                v-model="renameDraft"
+                class="w-[96px] rounded border border-neutral-300 px-1 py-0.5 text-[12.5px]"
+                aria-label="看板列名称"
+                @keydown.enter="commitRename"
+                @keydown.esc="renameColumnId = null"
+                @blur="commitRename"
+              />
+              <span v-else class="truncate text-[13px] font-semibold text-neutral-900">{{ col.name }}</span>
+              <span class="font-mono text-[11px] text-neutral-400">{{ countOf(col.id) }}</span>
+              <span v-if="statusMeta(col.id).terminal" class="text-[10px] text-neutral-400">终态</span>
+              <button
+                class="ml-auto shrink-0 rounded px-1 text-[14px] leading-none text-neutral-400 transition-colors hover:text-neutral-900"
+                aria-haspopup="menu"
+                :aria-expanded="columnMenuId === col.id"
+                :title="`列设置：${col.name}`"
+                @click.stop="toggleColumnMenu(col)"
+              >
+                ⋯
+              </button>
+            </div>
+
+            <!-- 列设置（内联面板；不用浮层以免被横向滚动容器裁切） -->
+            <div
+              v-if="columnMenuId === col.id"
+              class="mx-2 mb-2 rounded-lg border border-neutral-200 bg-white p-2"
+              data-menu-root
+            >
+              <div class="mb-1.5 text-[11px] text-neutral-400">角色（决定是否算终态）</div>
+              <div class="mb-2 flex flex-wrap gap-1">
+                <button
+                  v-for="role in (['normal', 'success', 'failure', 'archived'] as const)"
+                  :key="role"
+                  class="rounded-full border px-2 py-0.5 text-[11px] transition-colors"
+                  :class="col.role === role ? 'border-neutral-900 bg-neutral-100 text-neutral-900' : 'border-neutral-300 text-neutral-500'"
+                  @click="setColumnRole(col, role)"
+                >
+                  {{ ROLE_LABELS[role] }}
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-1 border-t border-neutral-100 pt-2">
+                <button class="rounded px-1.5 py-0.5 text-[11.5px] text-neutral-600 hover:text-neutral-900" @click="openRename(col)">
+                  重命名
+                </button>
+                <button
+                  class="rounded px-1.5 py-0.5 text-[11.5px] text-neutral-600 hover:text-neutral-900 disabled:text-neutral-300"
+                  :disabled="index === 0"
+                  @click="shiftColumn(col, -1)"
+                >
+                  ← 左移
+                </button>
+                <button
+                  class="rounded px-1.5 py-0.5 text-[11.5px] text-neutral-600 hover:text-neutral-900 disabled:text-neutral-300"
+                  :disabled="index === store.resolvedColumns.length - 1"
+                  @click="shiftColumn(col, 1)"
+                >
+                  右移 →
+                </button>
+                <button
+                  class="ml-auto rounded px-1.5 py-0.5 text-[11.5px] text-red-600 hover:underline disabled:text-neutral-300 disabled:no-underline"
+                  :disabled="store.columns.length <= 1"
+                  :title="store.columns.length <= 1 ? '至少保留一个看板' : '删除该看板并处置列内卡片'"
+                  @click="openRemoveColumn(col)"
+                >
+                  删除看板
+                </button>
+              </div>
             </div>
 
             <div class="flex-1 space-y-2.5 overflow-y-auto px-2.5 pb-2.5">
               <div
-                v-for="app in (board[status] ?? []).slice().sort((a, b) => sortCompare(a, b, prefs.sortMode))"
+                v-for="app in (board[col.id] ?? []).slice().sort((a, b) => sortCompare(a, b, prefs.sortMode))"
                 :key="app.id"
                 class="card-glass group cursor-pointer p-3.5"
                 @click="openDetail(app.id)"
@@ -545,7 +789,7 @@ onBeforeUnmount(() => {
                       简历 ✓
                     </button>
                     <button
-                      v-if="app.status === 'backlog'"
+                      v-if="app.status === store.firstColumnId"
                       class="rounded px-1.5 py-0.5 text-[11px] text-neutral-700 transition-colors hover:underline"
                       :disabled="specializing !== null"
                       @click="specializeResume(app)"
@@ -578,11 +822,19 @@ onBeforeUnmount(() => {
                 </div>
               </div>
 
-              <div v-if="!(board[status] ?? []).length" class="rounded-lg border border-dashed border-neutral-200 px-3 py-6 text-center text-[11.5px] text-neutral-300">
+              <div v-if="!(board[col.id] ?? []).length" class="rounded-lg border border-dashed border-neutral-200 px-3 py-6 text-center text-[11.5px] text-neutral-300">
                 暂无投递
               </div>
             </div>
           </div>
+
+          <!-- 加看板 -->
+          <button
+            class="flex h-11 w-[176px] shrink-0 items-center justify-center gap-1.5 self-start rounded-xl border border-dashed border-neutral-300 text-[12.5px] text-neutral-400 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+            @click="openAddColumn"
+          >
+            ＋ 加看板
+          </button>
         </div>
       </section>
 
@@ -788,6 +1040,160 @@ onBeforeUnmount(() => {
           <button class="rounded-lg border border-neutral-900 px-4 py-1.5 text-[12.5px] text-neutral-900" @click="showSettings = false">
             完成
           </button>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- 加看板 -->
+    <Modal v-if="addOpen" title="加看板" max-width="max-w-md" @close="addOpen = false">
+      <div class="space-y-5">
+        <div v-if="availablePresets.length">
+          <div class="mb-2 text-[12px] font-medium text-neutral-600">加回内置阶段</div>
+          <div class="flex gap-2">
+            <select v-model="addPresetId" class="flex-1 rounded-lg border border-neutral-300 px-2 py-1.5 text-[12.5px]">
+              <option v-for="p in availablePresets" :key="p.id" :value="p.id">
+                {{ p.name }}（{{ ROLE_LABELS[p.role] }}）
+              </option>
+            </select>
+            <button class="rounded-lg border border-neutral-900 px-4 py-1.5 text-[12.5px] text-neutral-900" @click="submitAddPreset">
+              添加
+            </button>
+          </div>
+        </div>
+        <div v-else class="text-[12px] text-neutral-400">内置阶段都已加进看板了。</div>
+
+        <div class="border-t border-neutral-200 pt-4">
+          <div class="mb-2 text-[12px] font-medium text-neutral-600">新建自定义看板</div>
+          <div class="flex gap-2">
+            <input
+              v-model="addName"
+              placeholder="看板名，如「待跟进」"
+              class="min-w-0 flex-1 rounded-lg border border-neutral-300 px-2 py-1.5 text-[12.5px]"
+              @keydown.enter="submitAddCustom"
+            />
+            <select v-model="addRole" class="shrink-0 rounded-lg border border-neutral-300 px-2 py-1.5 text-[12.5px]">
+              <option v-for="role in (['normal', 'success', 'failure', 'archived'] as const)" :key="role" :value="role">
+                {{ ROLE_LABELS[role] }}
+              </option>
+            </select>
+            <button
+              class="shrink-0 rounded-lg border border-neutral-900 px-4 py-1.5 text-[12.5px] text-neutral-900 disabled:border-neutral-300 disabled:text-neutral-300"
+              :disabled="!addName.trim()"
+              @click="submitAddCustom"
+            >
+              新建
+            </button>
+          </div>
+          <p class="mt-2 text-[11.5px] leading-relaxed text-neutral-400">
+            「进行中」列参与漏斗转化率；成功 / 失败 / 归档 视为终态列。列可随时拖拽排序、改名或删除。
+          </p>
+        </div>
+
+        <div class="flex justify-end border-t border-neutral-200 pt-3">
+          <button class="rounded-lg border border-neutral-300 px-4 py-1.5 text-[12.5px] text-neutral-600" @click="addOpen = false">
+            完成
+          </button>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- 删除看板：处置列内卡片 -->
+    <Modal
+      v-if="removingColumn"
+      :title="`删除看板「${removingColumn.name}」`"
+      max-width="max-w-lg"
+      @close="removingColumn = null"
+    >
+      <div v-if="!removingApps.length" class="space-y-4">
+        <p class="text-[12.5px] text-neutral-600">该看板没有卡片，可以直接删除。</p>
+        <div class="flex justify-end gap-2 border-t border-neutral-200 pt-3">
+          <button class="rounded-lg border border-neutral-300 px-4 py-1.5 text-[12.5px] text-neutral-600" @click="removingColumn = null">
+            取消
+          </button>
+          <button class="rounded-lg border border-neutral-900 bg-neutral-900 px-4 py-1.5 text-[12.5px] text-white" @click="confirmRemoveColumn">
+            删除看板
+          </button>
+        </div>
+      </div>
+
+      <div v-else class="space-y-4">
+        <p class="text-[12.5px] text-neutral-600">
+          该看板有 <span class="font-semibold text-neutral-900">{{ removingApps.length }}</span> 条投递，请选择它们的去向：
+        </p>
+
+        <div class="space-y-2">
+          <label
+            class="flex cursor-pointer items-start gap-2 rounded-lg border p-2.5"
+            :class="removeMode === 'move' ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-200'"
+          >
+            <input v-model="removeMode" type="radio" value="move" class="mt-0.5 accent-neutral-900" />
+            <span class="flex-1">
+              <span class="block text-[12.5px] text-neutral-900">全部迁移到指定看板</span>
+              <select
+                v-if="removeMode === 'move'"
+                v-model="removeTargetId"
+                class="mt-1.5 w-full rounded-lg border border-neutral-300 px-2 py-1 text-[12px]"
+              >
+                <option v-for="c in removeTargets" :key="c.id" :value="c.id">{{ c.name }}</option>
+              </select>
+            </span>
+          </label>
+
+          <label
+            class="flex cursor-pointer items-start gap-2 rounded-lg border p-2.5"
+            :class="removeMode === 'perCard' ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-200'"
+          >
+            <input v-model="removeMode" type="radio" value="perCard" class="mt-0.5 accent-neutral-900" />
+            <span class="min-w-0 flex-1">
+              <span class="block text-[12.5px] text-neutral-900">逐条指定去向</span>
+              <span class="mt-0.5 block text-[11.5px] text-neutral-400">每条投递单独选择迁到哪个看板，或直接删除。</span>
+              <div v-if="removeMode === 'perCard'" class="mt-2 max-h-56 space-y-1.5 overflow-y-auto pr-1">
+                <div v-for="app in removingApps" :key="app.id" class="flex items-center gap-2">
+                  <span class="min-w-0 flex-1 truncate text-[11.5px] text-neutral-600">
+                    {{ app.company }} · {{ app.title || '未命名岗位' }}
+                  </span>
+                  <select
+                    v-model="perCardPlan[app.id]"
+                    class="shrink-0 rounded border border-neutral-300 px-1.5 py-0.5 text-[11.5px]"
+                  >
+                    <option v-for="c in removeTargets" :key="c.id" :value="c.id">{{ c.name }}</option>
+                    <option value="delete">删除</option>
+                  </select>
+                </div>
+              </div>
+            </span>
+          </label>
+
+          <label
+            class="flex cursor-pointer items-start gap-2 rounded-lg border p-2.5"
+            :class="removeMode === 'delete' ? 'border-red-300 bg-red-50/40' : 'border-neutral-200'"
+          >
+            <input v-model="removeMode" type="radio" value="delete" class="mt-0.5 accent-neutral-900" />
+            <span class="flex-1">
+              <span class="block text-[12.5px] text-neutral-900">连同 {{ removingApps.length }} 条投递一起删除</span>
+              <span class="mt-0.5 block text-[11.5px] text-neutral-400">
+                投递的面试记录、题库条目与归档也会一并清理，不可恢复。
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 border-t border-neutral-200 pt-3">
+          <span class="text-[11.5px] text-neutral-400">
+            {{ unassignedCount ? `还有 ${unassignedCount} 条未指定去向` : '' }}
+          </span>
+          <div class="flex shrink-0 gap-2">
+            <button class="rounded-lg border border-neutral-300 px-4 py-1.5 text-[12.5px] text-neutral-600" @click="removingColumn = null">
+              取消
+            </button>
+            <button
+              class="rounded-lg border border-neutral-900 bg-neutral-900 px-4 py-1.5 text-[12.5px] text-white disabled:border-neutral-300 disabled:bg-neutral-300"
+              :disabled="(removeMode === 'move' && !removeTargetId) || unassignedCount > 0"
+              @click="confirmRemoveColumn"
+            >
+              确认删除看板
+            </button>
+          </div>
         </div>
       </div>
     </Modal>

@@ -1,40 +1,49 @@
 /**
- * 求职投递领域聚合（B1 状态机 / B4 统计 / F1 漏斗共用）。
+ * 求职投递领域聚合（B1 看板列 / B4 统计 / F1 漏斗共用）。
  * 纯函数，无副作用 —— 前端 localStorage 版与 server 版均引用。
- * 状态机支持动态面试轮次（round_1..round_8），每个投递的 total_rounds 决定"哪一轮是终面"。
+ *
+ * 看板列模型见 shared/board.ts：列由用户自定义（顺序 / 增删 / 改名），
+ * 投递的 `status` 即「所在列 id」：
+ * - 推进 = 下一列（按列顺序）
+ * - 终态 = 列角色 success / failure / archived
+ * 列注册表由 application store 在列变化时写入，未初始化时回退内置默认列。
  */
 import {
-  APPLICATION_PREFIX_STAGES,
-  APPLICATION_STATUS_META,
-  APPLICATION_TERMINALS,
-  MAX_ROUNDS,
-  type Application,
-  type ApplicationBoard,
-  type ApplicationEvent,
-  type ApplicationPrefixStage,
-  type ApplicationStats,
-  type ApplicationStatus,
-  type ApplicationStatusMeta,
-  type ApplicationTerminal,
-  type RoundStage,
+  columnIndex,
+  columnMeta,
+  ensureColumnsForData,
+  getActiveBoardColumns,
+  isTerminalColumn,
+  isValidColumnId,
+  nextColumnId,
+} from './board.js'
+import type {
+  Application,
+  ApplicationBoard,
+  ApplicationEvent,
+  ApplicationStatus,
+  ApplicationStatusMeta,
+  ApplicationStats,
 } from './index.js'
+import { MAX_ROUNDS, type RoundStage } from './index.js'
 
-/** 是否终态 */
+export { columnMeta, getActiveBoardColumns }
+
+/** 是否终态列（success / failure / archived） */
 export function isTerminal(status: ApplicationStatus): boolean {
-  return APPLICATION_TERMINALS.includes(status as (typeof APPLICATION_TERMINALS)[number])
+  return isTerminalColumn(status)
 }
 
-/** 是否为合法状态（前置 / 动态轮次 / 终态）—— 结构校验用 */
+/**
+ * 是否为合法列 id。
+ * 列可自定义 → 只做结构校验（非空 / 长度 / 无控制字符）；
+ * 数据里出现的未知列会被 board 层自动补成列，避免卡片丢失。
+ */
 export function isValidStatus(s: string): boolean {
-  if (isTerminal(s as ApplicationStatus)) return true
-  if (isRound(s as ApplicationStatus)) {
-    const r = roundOf(s as ApplicationStatus)
-    return r !== null && r >= 1 && r <= MAX_ROUNDS
-  }
-  return APPLICATION_PREFIX_STAGES.includes(s as ApplicationPrefixStage)
+  return isValidColumnId(s)
 }
 
-/** 是否动态轮次阶段（round_1 .. round_8） */
+/** 是否动态轮次列（round_1 .. round_8）—— 用于识别历史/预设的面试轮次命名 */
 export function isRound(status: ApplicationStatus): status is RoundStage {
   if (typeof status !== 'string' || !/^round_\d+$/.test(status)) return false
   const r = Number(status.slice('round_'.length))
@@ -47,81 +56,43 @@ export function roundOf(status: ApplicationStatus): number | null {
   return Number(status.slice('round_'.length))
 }
 
-/**
- * 流程阶段序号：backlog=0 applied=1 viewed=2 round_1=3 round_2=4 …（终态返回 -1）。
- * 用于"只允许前进"的迁移校验与漏斗比较。
- */
+/** 列序号（不在当前列里返回 -1）—— 漏斗比较 / 顺序判断用 */
 export function stageIndex(status: ApplicationStatus): number {
-  if (isTerminal(status)) return -1
-  const r = roundOf(status)
-  if (r !== null) return APPLICATION_PREFIX_STAGES.length - 1 + r
-  return APPLICATION_PREFIX_STAGES.indexOf(status as ApplicationPrefixStage)
+  return columnIndex(status)
 }
 
-/** 轮次阶段的灰阶交替配色（经典黑白：奇偶轮深浅区分，最多 8 轮） */
-const ROUND_COLORS: Array<Pick<ApplicationStatusMeta, 'text' | 'chip' | 'dot'>> = [
-  { text: 'text-neutral-900', chip: 'border-neutral-400 bg-neutral-100', dot: 'bg-neutral-800' },
-  { text: 'text-neutral-600', chip: 'border-neutral-300 bg-neutral-50', dot: 'bg-neutral-400' },
-]
-
 /**
- * 状态元信息：固定阶段查表，动态轮次按序号生成。
- * total_rounds 决定某轮是否"终面"（round_i 且 i ≥ total_rounds）。
- * 默认 MAX_ROUNDS：不传时任何轮次都显示"第 N 面"（非终面）；真正的"终面"
- * 由各投递卡片/徽章传入其 total_rounds 判断。
+ * 列元信息（列头 / 徽章共用）：标签取列名，配色取列角色。
+ * `totalRounds` 参数保留仅为兼容既有调用点（旧状态机用它判断「终面」，
+ * 自定义列下以列名为准，不再由轮数推导）。
  */
 export function statusMeta(status: ApplicationStatus, totalRounds = MAX_ROUNDS): ApplicationStatusMeta {
-  const r = roundOf(status)
-  if (r !== null) {
-    const colors = ROUND_COLORS[(r - 1) % ROUND_COLORS.length]!
-    const isFinal = r >= totalRounds
-    return {
-      label: isFinal ? '终面' : `第 ${r} 面`,
-      desc: isFinal ? '最终轮面试' : `第 ${r} 轮面试`,
-      terminal: false,
-      ...colors,
-    }
-  }
-  return APPLICATION_STATUS_META[status as ApplicationPrefixStage | ApplicationTerminal]
+  void totalRounds
+  return columnMeta(status)
 }
 
 /**
- * 下一个流程阶段（看板"推进"用）：
- * - 前置阶段：backlog → applied → viewed → round_1
- * - 轮次：round_i → round_{i+1}；已达到 total_rounds（最后一轮）返回 null，由用户标记 Offer/拒绝
- * - 终态：null
+ * 下一个流程阶段（看板「推进」用）：下一个进行中列；已是最后一个进行中列 → 成功列；
+ * 终态列 → null（终态不再自动推进）。
  */
 export function nextStage(
   status: ApplicationStatus,
   totalRounds = MAX_ROUNDS,
 ): ApplicationStatus | null {
-  if (isTerminal(status)) return null
-  const r = roundOf(status)
-  if (r !== null) {
-    if (r >= totalRounds) return null
-    return `round_${r + 1}` as RoundStage
-  }
-  const idx = stageIndex(status)
-  if (idx < 0) return null
-  if (idx < APPLICATION_PREFIX_STAGES.length - 1) {
-    return APPLICATION_PREFIX_STAGES[idx + 1] as ApplicationStatus
-  }
-  return 'round_1' as RoundStage
+  void totalRounds
+  return nextColumnId(status)
 }
 
 /**
- * 校验一次迁移是否合法：
- * - 阶段只允许前进（索引更大）；
- * - 任意状态 → 终态 都允许；
- * - 其余（后退 / 终态再出发）不允许。
+ * 校验一次迁移是否合法。
+ * 列由用户自定义后改为**自由移动**（看板语义：可前进、可回退、可从终态拉回修正），
+ * 仅拦截「原地不动」与非法列 id。
  */
 export function canTransition(from: ApplicationStatus, to: ApplicationStatus): boolean {
-  if (isTerminal(from)) return false
-  if (isTerminal(to)) return true
-  return stageIndex(to) > stageIndex(from)
+  return isValidColumnId(to) && from !== to
 }
 
-/** 失败原因分布（F1）：拒绝投递按原因归类计数，未填写归「未说明」 */
+/** 失败原因分布（F1）：拒绝列投递按原因归类计数，未填写归「未说明」 */
 export function buildRejectionReasons(apps: Application[]): Array<{ reason: string; count: number }> {
   const map = new Map<string, number>()
   for (const app of apps) {
@@ -134,51 +105,46 @@ export function buildRejectionReasons(apps: Application[]): Array<{ reason: stri
     .sort((a, b) => b.count - a.count)
 }
 
-/**
- * 看板列（数据驱动）：前置阶段 + 实际用到的轮次列 + 终态。
- * 轮次上限取 max(当前轮次, total_rounds)——终态/进行中的投递也按其预期轮数保留列，
- * 避免"曾经到达"的轮次从漏斗/列中丢失。
- */
-export function boardStages(apps: Application[]): ApplicationStatus[] {
-  let maxRound = 1
-  for (const app of apps) {
-    const r = roundOf(app.status)
-    if (r !== null && r > maxRound) maxRound = r
-    const tr = app.total_rounds
-    if (tr !== undefined && tr > maxRound) maxRound = Math.min(tr, MAX_ROUNDS)
-  }
-  const max = Math.max(1, Math.min(maxRound, MAX_ROUNDS))
-  const rounds = Array.from({ length: max }, (_, i) => `round_${i + 1}` as RoundStage)
-  return [...APPLICATION_PREFIX_STAGES, ...rounds, ...APPLICATION_TERMINALS]
+/** 实际生效的看板列：用户配置 + 数据里出现但配置缺失的列（自动补，插在终态列前） */
+export function resolveBoardColumns(apps: Application[]): ReturnType<typeof ensureColumnsForData> {
+  return ensureColumnsForData(getActiveBoardColumns(), apps)
 }
 
-/** 把一组投递按当前状态分组为看板列 */
+/** 看板列 id（按顺序） */
+export function boardStages(apps: Application[]): ApplicationStatus[] {
+  return resolveBoardColumns(apps).map((c) => c.id)
+}
+
+/** 把一组投递按所在列分组 */
 export function groupByStatus(apps: Application[]): ApplicationBoard {
-  const board = {} as ApplicationBoard
-  for (const status of boardStages(apps)) {
-    board[status] = apps.filter((a) => a.status === status)
+  const board: ApplicationBoard = {}
+  for (const status of boardStages(apps)) board[status] = []
+  for (const app of apps) {
+    const bucket = board[app.status]
+    if (bucket) bucket.push(app)
+    else board[app.status] = [app]
   }
   return board
 }
 
 /**
  * 计算投递统计（B4 / F1 数据源）。
- * 漏斗"曾经到达"：优先用事件日志精确还原（创建 → 各阶段 → 终态），
- * 无事件的旧数据回退用当前状态估算。
+ * 漏斗「曾经到达」：优先用事件日志精确还原（创建 → 各阶段 → 终态），
+ * 无事件的旧数据回退用当前所在列估算。
  */
 export function buildApplicationStats(
   apps: Application[],
   events: ApplicationEvent[],
 ): ApplicationStats {
   const stages = boardStages(apps)
-  const byStatus = {} as Record<ApplicationStatus, number>
+  const byStatus: Record<string, number> = {}
   for (const status of stages) byStatus[status] = 0
   for (const app of apps) byStatus[app.status] = (byStatus[app.status] ?? 0) + 1
 
-  // 每个投递曾经到达的状态（含终态）。
-  // 同时计入非空 ev.from：状态迁移时 from 也是真实待过的阶段（如 backlog→rejected，
-  // 只有一条事件时 to 是终态、stageIndex=-1，若不记 from 会把这投递在漏斗里全部算成 0）。
-  const reached = new Map<string, Set<ApplicationStatus>>()
+  // 每个投递曾经到达的列（含终态）。
+  // 同时计入非空 ev.from：迁移时 from 也是真实待过的列（如 backlog→rejected，
+  // 只有一条事件时 to 是终态、序号靠后，若不记 from 会把这投递在漏斗里全部算成 0）。
+  const reached = new Map<string, Set<string>>()
   for (const app of apps) reached.set(app.id, new Set())
   for (const ev of events) {
     const set = reached.get(ev.application_id)
@@ -187,7 +153,7 @@ export function buildApplicationStats(
     if (ev.from) set.add(ev.from)
   }
 
-  // 漏斗：每个非终态阶段"曾经到达"的数量
+  // 漏斗：每个进行中列「曾经到达」的数量
   const funnel: ApplicationStats['funnel'] = stages
     .filter((s) => !isTerminal(s))
     .map((status) => {
@@ -195,17 +161,18 @@ export function buildApplicationStats(
       const count = apps.filter((app) => {
         const set = reached.get(app.id)
         if (set && set.size > 0) {
-          // 事件轨迹：取到达过的最大非终态阶段（终态事件 index=-1，不会抬高漏斗），
-          // 并计入当前状态（部分投递状态被直接编辑/导入，事件不全但已到达）。
+          // 事件轨迹：取到达过的最大进行中列序号（终态事件序号为 -1，不会抬高漏斗），
+          // 并计入当前列（部分投递被直接编辑/导入，事件不全但已到达）。
           let furthest = -1
           for (const s of set) {
+            if (isTerminal(s)) continue
             const i = stageIndex(s)
             if (i > furthest) furthest = i
           }
-          return Math.max(furthest, stageIndex(app.status)) >= idx
+          return Math.max(furthest, isTerminal(app.status) ? -1 : stageIndex(app.status)) >= idx
         }
-        // 无事件（如备选池新条目）：按当前状态估算
-        return stageIndex(app.status) >= idx
+        // 无事件（如备选池新条目）：按当前列估算
+        return !isTerminal(app.status) && stageIndex(app.status) >= idx
       }).length
       return { status, label: statusMeta(status).label, count }
     })

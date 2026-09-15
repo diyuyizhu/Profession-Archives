@@ -9,24 +9,24 @@ import type {
   QuestionBankItem,
 } from './index.js'
 import { isTerminal, nextStage } from './application.js'
+import { firstColumnByRole } from './board.js'
 import { MAX_ROUNDS } from './index.js'
 
 /**
- * C2 状态流转：单轮面试结果 → 投递状态变更。
- * - passed  → 推进一级（已到投递的最后一轮则视为 Offer）
- * - failed  → 拒绝
+ * C2 列流转：单轮面试结果 → 投递所在看板列变更。
+ * - passed  → 推进到下一列；已是最后一个进行中列 → 成功列（如 Offer）
+ * - failed  → 第一个失败列（如 拒绝）
  * - pending → 不动（返回 null）
- * - 已是终态 → 不动（终态是吸收态，任何面试结果都不再改写看板）
- * 由 store 在记录面试后执行，保证看板实时推进。totalRounds 决定哪一轮是最后一面。
+ * - 已是终态列 → 不动（终态是吸收态，任何面试结果都不再改写看板）
+ * 由 store 在记录面试后执行，保证看板实时推进。
  */
 export function applyInterviewResult(
   current: ApplicationStatus,
   result: InterviewResult,
-  totalRounds = MAX_ROUNDS,
 ): ApplicationStatus | null {
   if (isTerminal(current)) return null
-  if (result === 'passed') return nextStage(current, totalRounds) ?? 'offer'
-  if (result === 'failed') return 'rejected'
+  if (result === 'passed') return nextStage(current)
+  if (result === 'failed') return firstColumnByRole('failure')?.id ?? null
   return null
 }
 

@@ -97,7 +97,7 @@ export const useBridgeSyncStore = defineStore('bridgeSync', () => {
           appStore.addApplication({
             company: it.company || '未知公司',
             title: it.title,
-            status: 'backlog',
+            status: appStore.firstColumnId,
             notes: '',
             tags: it.tags ?? [],
             groups: [],

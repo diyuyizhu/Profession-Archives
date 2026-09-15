@@ -1,13 +1,14 @@
 <script setup lang="ts">
 /**
  * 投递编辑弹窗（B1）：只做编辑（新建统一走 /tracking/collect 全页表单）。
- * - 状态只读：状态机迁移请用看板卡片「推进 / 标记」
+ * - 列只读：看板列迁移请用卡片「推进 / 移动到…」或看板列管理
  * - a11y：role=dialog + aria-modal、焦点陷阱、Escape 关闭、焦点还原
  * - 表单提交：<form @submit.prevent>，保存失败给出可见反馈
  */
 import type { Application, ApplicationPayload, ApplyMethod } from '@pa/shared'
 import { APPLY_METHOD_LABELS, APPLY_METHODS } from '@pa/shared'
 import { statusMeta } from '@pa/shared/application'
+import { activeColumn } from '@pa/shared/board'
 import { parseTags } from '@pa/shared/utils'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
@@ -20,6 +21,9 @@ const emit = defineEmits<{
   save: [payload: ApplicationPayload]
   close: []
 }>()
+
+/** 所在列是否为失败列（失败列才记录/展示拒绝原因，F1 失败原因分布依据） */
+const isFailureColumn = computed(() => activeColumn(props.app.status)?.role === 'failure')
 
 const form = ref({
   company: props.app.company,
@@ -73,7 +77,7 @@ function submit(): void {
       total_rounds: form.value.total_rounds,
       importance: form.value.importance,
       email_thread: form.value.email_thread.trim() || undefined,
-      reject_reason: props.app.status === 'rejected' ? form.value.reject_reason.trim() || undefined : undefined,
+      reject_reason: isFailureColumn.value ? form.value.reject_reason.trim() || undefined : undefined,
       applied_at: form.value.applied_at || undefined,
     })
   } catch {
@@ -193,7 +197,7 @@ function submit(): void {
         </div>
 
         <!-- 拒绝原因（仅状态为「拒绝」时显示） -->
-        <label v-if="app.status === 'rejected'" class="block">
+        <label v-if="isFailureColumn" class="block">
           <span class="mb-1.5 block text-xs text-neutral-500">拒绝原因（F1 统计用）</span>
           <input
             v-model="form.reject_reason"
