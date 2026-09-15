@@ -15,12 +15,15 @@ export interface BoardPrefs {
   viewMode: BoardViewMode
   sortMode: BoardSortMode
   showFields: Record<BoardFieldKey, boolean>
+  /** 表格视图是否展示全部内置列（关 = 只显示默认列 + 自定义属性） */
+  showAllFields: boolean
 }
 
 const DEFAULT_PREFS: BoardPrefs = {
   viewMode: 'board',
   sortMode: 'updated',
   showFields: { channel: true, date: true, tags: true, notes: true, importance: true },
+  showAllFields: false,
 }
 
 export const FIELD_LABELS: Record<BoardFieldKey, string> = {
@@ -50,6 +53,7 @@ function load(): BoardPrefs {
           ? parsed.sortMode
           : 'updated',
       showFields,
+      showAllFields: parsed.showAllFields === true,
     }
   } catch {
     return { ...DEFAULT_PREFS }

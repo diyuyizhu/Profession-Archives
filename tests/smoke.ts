@@ -19,7 +19,17 @@ import {
   moveColumn,
   setActiveBoardColumns,
 } from '../shared/src/board.ts'
-import type { BoardColumn } from '../shared/src/index.ts'
+import type { BoardColumn, PropertyDef } from '../shared/src/index.ts'
+import {
+  createView,
+  findField,
+  isValuelessOperator,
+  matchesFilter,
+  normalizeView,
+  operatorsFor,
+  resolveFields,
+  sortApplications,
+} from '../shared/src/property.ts'
 import { parseEmailForApplication } from '../shared/src/email.ts'
 import { buildResumeDraft, matchJdToProfile, extractHighlights } from '../shared/src/ai.ts'
 import { groupSkillHistory, planProgress } from '../shared/src/skill.ts'
@@ -92,6 +102,68 @@ async function main(): Promise<void> {
   assert(patched.some((c) => c.id === 'legacy_col'), '未知列自动补列')
   assert(patched.findIndex((c) => c.id === 'legacy_col') < patched.findIndex((c) => c.id === 'done'), '补列插在终态列之前')
   assert(moveColumn(custom, 0, 2).map((c) => c.id).join() === 'chat,done,inbox,no', '列重排')
+
+  console.log('== shared: 多维表格（自定义属性 / 筛选 / 排序 / 视图）==')
+  const propDefs: PropertyDef[] = [
+    { id: 'prop_a', name: '是否内推', type: 'checkbox' },
+    { id: 'prop_b', name: '期望薪资', type: 'number' },
+    { id: 'prop_c', name: '优先级', type: 'select', options: [{ id: 'o1', name: '高' }, { id: 'o2', name: '低' }] },
+    { id: 'prop_d', name: '技能', type: 'multi_select', options: [] },
+    { id: 'prop_e', name: '跟进日期', type: 'date' },
+  ]
+  const ts2 = new Date().toISOString()
+  const rows: Application[] = [
+    { id: 'r1', company: '甲公司', title: 'A', status: 'applied', tags: [], notes: '', created_at: ts2, updated_at: ts2, properties: { prop_a: true, prop_b: 30, prop_c: '高', prop_d: ['Vue', 'TS'], prop_e: '2026-08-01' } },
+    { id: 'r2', company: '乙公司', title: 'B', status: 'backlog', tags: [], notes: '', created_at: ts2, updated_at: ts2, properties: { prop_b: 20, prop_c: '低', prop_d: ['Go'] } },
+    { id: 'r3', company: '丙公司', title: 'C', status: 'offer', tags: [], notes: '', created_at: ts2, updated_at: ts2 },
+  ]
+  const fields = resolveFields(propDefs)
+  assert(fields.some((f) => f.key === 'prop_a' && f.kind === 'boolean' && f.custom), '自定义属性解析为字段')
+  assert(findField(propDefs, 'company')?.kind === 'text' && !findField(propDefs, 'company')?.custom, '内置字段保留且非自定义')
+
+  const cond = (field: string, operator: string, value?: string) => ({
+    id: `c_${field}_${operator}`,
+    field,
+    operator: operator as never,
+    value,
+  })
+  assert(matchesFilter(rows[0]!, { op: 'and', conditions: [cond('prop_a', 'is_true')] }), '勾选框筛选（已勾选）')
+  assert(!matchesFilter(rows[1]!, { op: 'and', conditions: [cond('prop_a', 'is_true')] }), '勾选框筛选（未勾选被排除）')
+  assert(matchesFilter(rows[1]!, { op: 'and', conditions: [cond('prop_b', 'lt', '25')] }), '数字小于')
+  assert(matchesFilter(rows[0]!, { op: 'and', conditions: [cond('prop_d', 'contains', 'Vue')] }), '多选按元素精确匹配')
+  assert(!matchesFilter(rows[1]!, { op: 'and', conditions: [cond('prop_d', 'contains', 'Vue')] }), '多选不含则不匹配')
+  assert(matchesFilter(rows[0]!, { op: 'and', conditions: [cond('company', 'contains', '甲')] }), '内置字段参与筛选')
+  assert(matchesFilter(rows[2]!, { op: 'and', conditions: [cond('prop_e', 'is_empty')] }), '空值筛选')
+  assert(
+    matchesFilter(rows[1]!, {
+      op: 'or',
+      conditions: [cond('company', 'contains', '甲'), cond('company', 'contains', '乙')],
+    }),
+    'OR 组合条件',
+  )
+
+  const sorted = sortApplications(rows, [{ field: 'prop_b', desc: true }])
+  assert(sorted[0]!.id === 'r1' && sorted[2]!.id === 'r3', '自定义数字列倒序（空值恒排最后）')
+  const byTitle = sortApplications(rows, [{ field: 'title', desc: false }]).map((a) => a.id).join()
+  assert(byTitle === 'r1,r2,r3', '按内置字段升序')
+
+  assert(operatorsFor('number').includes('gt') && !operatorsFor('boolean').includes('contains'), '运算符按字段形态收敛')
+  assert(isValuelessOperator('is_empty') && !isValuelessOperator('contains'), '免值运算符判定')
+
+  const view = createView('本周投递')
+  assert(view.kind === 'table' && view.filter.conditions.length === 0 && view.hidden.length === 0, '新建视图默认值')
+  const normalized = normalizeView({
+    id: 'v1',
+    name: 'x',
+    kind: 'board',
+    hidden: ['prop_a', 3],
+    sorts: [{ field: 'prop_b', desc: true }, {}],
+    filter: { op: 'or', conditions: [{ field: 'company', operator: 'contains' }] },
+  })
+  assert(
+    normalized?.kind === 'board' && normalized.hidden.length === 1 && normalized.sorts.length === 1 && normalized.filter.op === 'or',
+    '视图结构校验（丢弃脏数据）',
+  )
 
   console.log('== shared: 面试 ==')
   setActiveBoardColumns(DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c })))

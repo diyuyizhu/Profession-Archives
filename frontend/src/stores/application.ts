@@ -14,6 +14,8 @@ import type {
   ApplicationStats,
   BoardColumn,
   BoardRole,
+  PropertyValue,
+  PropertyValues,
 } from '@pa/shared'
 import {
   boardStages,
@@ -67,6 +69,17 @@ function defaultColumns(): BoardColumn[] {
   return DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c }))
 }
 
+/** 自定义属性值结构校验（只保留标量 / 字符串数组） */
+function sanitizeProperties(raw: unknown): PropertyValues | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const out: PropertyValues = {}
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') out[k] = v
+    else if (Array.isArray(v)) out[k] = v.filter((x): x is string => typeof x === 'string')
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
 /**
  * 结构校验：坏数据宁可丢弃，也不要让模板访问 undefined 导致白屏。
  * 状态列已自定义，故只做结构校验（未知列会被自动补列，不会丢卡片）。
@@ -103,6 +116,7 @@ function sanitizeApplications(list: unknown): Application[] {
       email_thread: typeof a.email_thread === 'string' ? a.email_thread : undefined,
       reject_reason: typeof a.reject_reason === 'string' ? a.reject_reason : undefined,
       applied_at: typeof a.applied_at === 'string' ? a.applied_at : undefined,
+      properties: sanitizeProperties(a.properties),
       created_at: typeof a.created_at === 'string' ? a.created_at : ts,
       updated_at: typeof a.updated_at === 'string' ? a.updated_at : ts,
     }))
@@ -299,6 +313,37 @@ export const useApplicationStore = defineStore('application', () => {
     persist()
   }
 
+  /* ── 自定义属性值（多维表格） ── */
+
+  /** 写入一个自定义属性值；空值 = 清除该键 */
+  function setProperty(id: string, propertyId: string, value: PropertyValue): void {
+    const app = applications.value.find((a) => a.id === id)
+    if (!app) return
+    const next: PropertyValues = { ...(app.properties ?? {}) }
+    const isEmpty =
+      value === undefined ||
+      value === null ||
+      value === '' ||
+      (Array.isArray(value) && value.length === 0)
+    if (isEmpty) delete next[propertyId]
+    else next[propertyId] = value
+    app.properties = Object.keys(next).length ? next : undefined
+    touch(app, {})
+    persist()
+  }
+
+  /** 删除属性定义时，清掉所有投递上的该属性值 */
+  function clearPropertyValues(propertyId: string): void {
+    for (const app of applications.value) {
+      if (!app.properties || !(propertyId in app.properties)) continue
+      const next = { ...app.properties }
+      delete next[propertyId]
+      app.properties = Object.keys(next).length ? next : undefined
+      touch(app, {})
+    }
+    persist()
+  }
+
   /** 全部分组标签（去重，供筛选/管理） */
   const allGroups = computed(() => {
     const set = new Set<string>()
@@ -456,6 +501,8 @@ export const useApplicationStore = defineStore('application', () => {
     advance,
     clearAll,
     importApplications,
+    setProperty,
+    clearPropertyValues,
     countInColumn,
     columnName,
     appsInColumn,

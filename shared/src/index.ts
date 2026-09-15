@@ -387,6 +387,40 @@ export const APPLY_METHOD_DESC: Record<ApplyMethod, string> = {
   other: '内推 / 线下等',
 }
 
+/* ── 自定义属性（投递多维表格） ── */
+
+/** 属性类型（首版支持的类型集） */
+export type PropertyType =
+  | 'text'
+  | 'long_text'
+  | 'number'
+  | 'select'
+  | 'multi_select'
+  | 'date'
+  | 'checkbox'
+  | 'url'
+
+/** 单选 / 多选的选项 */
+export interface PropertyOption {
+  id: string
+  name: string
+}
+
+/** 属性定义（表结构，用户可增删改） */
+export interface PropertyDef {
+  id: string
+  name: string
+  type: PropertyType
+  /** select / multi_select 的选项表 */
+  options?: PropertyOption[]
+}
+
+/** 单个属性的值 */
+export type PropertyValue = string | number | boolean | string[] | null | undefined
+
+/** 一条记录的自定义属性值（按属性 id 索引） */
+export type PropertyValues = Record<string, PropertyValue>
+
 /** 投递记录 */
 export interface Application {
   id: string
@@ -416,6 +450,8 @@ export interface Application {
   reject_reason?: string
   /** 投递时间（ISO 日期） */
   applied_at?: string
+  /** 自定义属性值（多维表格附加列，按属性 id 索引；未设置 = 空） */
+  properties?: PropertyValues
   created_at: string
   updated_at: string
 }

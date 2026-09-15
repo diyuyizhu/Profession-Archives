@@ -1,6 +1,8 @@
 <script setup lang="ts">
 /**
- * 投递看板（B1）：用户自定义多列看板 / 列表 / 全流程视图。
+ * 投递看板（B1）：看板 / 多维表格 / 全流程三种视图。
+ * - 表格视图是 Notion 式多维表格：自定义属性、条件筛选、排序、可保存多套视图，
+ *   每条记录点进独立记录页（ApplicationDetailView）
  * - 列可自定义：拖拽排序、改名、改角色（进行中/成功/失败/归档）、增删
  * - 删列时处置列内卡片：全部迁移 / 逐卡指定 / 一并删除
  * - 筛选：关键词 / 渠道 / 标签分类；排序：更新时间 / 投递时间 / 重要性 / 标题
@@ -12,11 +14,29 @@ import type {
   Application,
   ApplicationPayload,
   ApplicationStatus,
+  ApplyMethod,
   BoardColumn,
   BoardRole,
+  PropertyType,
 } from '@pa/shared'
+import { APPLY_METHOD_LABELS } from '@pa/shared'
 import { groupByStatus, nextStage, statusMeta } from '@pa/shared/application'
 import { COLUMN_PRESETS, ROLE_LABELS } from '@pa/shared/board'
+import {
+  DEFAULT_VISIBLE_FIELDS,
+  OPERATOR_LABELS,
+  PROPERTY_TYPE_ICONS,
+  PROPERTY_TYPE_LABELS,
+  isValuelessOperator,
+  matchesFilter,
+  operatorsFor,
+  resolveFields,
+  sortApplications,
+  type FilterCondition,
+  type FilterOperator,
+  type ResolvedField,
+  type SortRule,
+} from '@pa/shared/property'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -31,10 +51,13 @@ import { useArchivesStore } from '@/stores/archives'
 import { FIELD_LABELS, useBoardPrefsStore } from '@/stores/boardPrefs'
 import { useInterviewStore } from '@/stores/interview'
 import { useProfileStore } from '@/stores/profile'
+import PropertyCell from '@/components/property/PropertyCell.vue'
+import { usePropertiesStore } from '@/stores/properties'
 import { useQuestionBankStore } from '@/stores/questionBank'
 import { useResumeTreeStore } from '@/stores/resumeTree'
 
 const store = useApplicationStore()
+const propsStore = usePropertiesStore()
 const prefsStore = useBoardPrefsStore()
 const prefs = prefsStore.prefs
 const router = useRouter()
@@ -130,10 +153,235 @@ const sortedApps = computed(() =>
   [...filteredApps.value].sort((a, b) => sortCompare(a, b, prefs.sortMode)),
 )
 
+/* ── 多维表格：字段 / 筛选 / 排序 / 视图 ── */
+
+/** 内置字段的表格文本（自定义属性走 PropertyCell） */
+function getBuiltinText(app: Application, key: string): string {
+  if (key === 'apply_method') {
+    return app.apply_method ? (APPLY_METHOD_LABELS[app.apply_method as ApplyMethod] ?? '—') : '—'
+  }
+  const v = (app as unknown as Record<string, unknown>)[key]
+  if (v === undefined || v === null || v === '') return '—'
+  if (Array.isArray(v)) return v.length ? v.join('、') : '—'
+  return String(v)
+}
+
+/** 全部可选字段（内置字段 + 自定义属性） */
+const allFields = computed<ResolvedField[]>(() => resolveFields(propsStore.properties))
+
+/** 当前视图隐藏的列 */
+const hiddenFields = computed(() => new Set(propsStore.activeView?.hidden ?? []))
+
+/** 表格列顺序：视图里记住的顺序优先，未记录的新字段追加在后 */
+const tableFields = computed<ResolvedField[]>(() => {
+  const all = allFields.value
+  const known = new Set(all.map((f) => f.key))
+  const order = (propsStore.activeView?.columns ?? []).filter((k) => known.has(k))
+  const ordered = order.map((k) => all.find((f) => f.key === k)!).filter(Boolean)
+  const rest = all.filter((f) => !order.includes(f.key))
+  const visible = [...ordered, ...rest].filter((f) => !hiddenFields.value.has(f.key))
+  // 内置视图（无视图配置）时只展示默认列，其余在列菜单里打开
+  if (!propsStore.activeView && !prefs.showAllFields) {
+    return visible.filter((f) => f.custom || DEFAULT_VISIBLE_FIELDS.includes(f.key))
+  }
+  return visible
+})
+
+/** 视图筛选（内置视图为空） */
+const viewFilter = computed(() => propsStore.activeFilter)
+
+/** 条件筛选后的行（快捷筛选 → 视图条件筛选 → 视图排序） */
+const tableRows = computed(() => {
+  const rows = filteredApps.value.filter((a) => matchesFilter(a, viewFilter.value))
+  const sorts = propsStore.activeSorts
+  if (sorts.length) return sortApplications(rows, sorts)
+  return sortApplications(rows, [], (a, b) => sortCompare(a, b, prefs.sortMode))
+})
+
+/* 筛选条件编辑 */
+const conditionFields = computed(() => allFields.value)
+
+function fieldOf(key: string): ResolvedField | undefined {
+  return allFields.value.find((f) => f.key === key)
+}
+
+function operatorsOf(fieldKey: string): FilterOperator[] {
+  const f = fieldOf(fieldKey)
+  return operatorsFor(f?.kind ?? 'text')
+}
+
+function addCondition(): void {
+  const cond: FilterCondition = {
+    id: Math.random().toString(36).slice(2, 9),
+    field: 'company',
+    operator: 'contains',
+    value: '',
+  }
+  commitFilter({ conditions: [...viewFilter.value.conditions, cond] })
+}
+
+function patchCondition(id: string, patch: Partial<FilterCondition>): void {
+  const conditions = viewFilter.value.conditions.map((c) => {
+    if (c.id !== id) return c
+    const next = { ...c, ...patch }
+    // 换字段时把运算符收敛到该字段可用的第一个
+    if (patch.field && patch.field !== c.field) {
+      const ops = operatorsFor(fieldOf(patch.field)?.kind ?? 'text')
+      if (!ops.includes(next.operator)) next.operator = ops[0]!
+      next.value = ''
+    }
+    if (isValuelessOperator(next.operator)) next.value = ''
+    return next
+  })
+  commitFilter({ conditions })
+}
+
+function removeCondition(id: string): void {
+  commitFilter({ conditions: viewFilter.value.conditions.filter((c) => c.id !== id) })
+}
+
+function setFilterOp(op: 'and' | 'or'): void {
+  commitFilter({ op })
+}
+
+/** 写回筛选：有视图就改视图，没有就先存一个视图 */
+function commitFilter(patch: Partial<{ op: 'and' | 'or'; conditions: FilterCondition[] }>): void {
+  const current = viewFilter.value
+  const next = { op: patch.op ?? current.op, conditions: patch.conditions ?? current.conditions }
+  const view = propsStore.activeView
+  if (view) propsStore.updateView(view.id, { filter: next })
+  else propsStore.saveView('筛选视图', { filter: next, kind: 'table', hidden: [], columns: undefined })
+}
+
+/* 排序编辑（当前视图） */
+const pendingSortField = ref('')
+
+function setSort(field: string, desc: boolean): void {
+  const view = propsStore.activeView
+  const sorts: SortRule[] = field ? [{ field, desc }] : []
+  if (view) propsStore.updateView(view.id, { sorts })
+  else propsStore.saveView('排序视图', { sorts, kind: 'table' })
+}
+
+function toggleSortField(field: string): void {
+  const cur = propsStore.activeSorts[0]
+  if (cur?.field === field) setSort(field, !cur.desc)
+  else setSort(field, false)
+}
+
+/* 视图栏 */
+const viewTabs = computed(() => [{ id: '', name: '全部投递' }, ...propsStore.views.map((v) => ({ id: v.id, name: v.name }))])
+
+function saveCurrentView(): void {
+  const name = window.prompt('视图名称？', '新视图')
+  if (!name?.trim()) return
+  propsStore.saveView(name.trim(), {
+    kind: 'table',
+    filter: { op: viewFilter.value.op, conditions: viewFilter.value.conditions.map((c) => ({ ...c })) },
+    sorts: propsStore.activeSorts.map((s) => ({ ...s })),
+    hidden: [...hiddenFields.value],
+    columns: tableFields.value.map((f) => f.key),
+  })
+}
+
+function removeActiveView(): void {
+  const view = propsStore.activeView
+  if (!view) return
+  if (!window.confirm(`删除视图「${view.name}」？（不影响投递数据）`)) return
+  propsStore.removeView(view.id)
+}
+
+/* 列（属性）管理 —— 菜单只存 key，字段本身从 store 实时派生，改类型/加选项后立即反映 */
+const columnMenuKey = ref<string | null>(null)
+const columnMenuField = computed<ResolvedField | null>(() =>
+  columnMenuKey.value ? (allFields.value.find((f) => f.key === columnMenuKey.value) ?? null) : null,
+)
+
+/** 当前列可用的选项（实时） */
+const columnOptions = computed(() => {
+  const key = columnMenuKey.value
+  if (!key) return []
+  return propsStore.properties.find((p) => p.id === key)?.options ?? []
+})
+
+/** 「新增属性」类型选择项 */
+const PROPERTY_TYPE_OPTIONS = (Object.keys(PROPERTY_TYPE_LABELS) as PropertyType[]).map((t) => ({
+  type: t,
+  label: PROPERTY_TYPE_LABELS[t],
+  icon: PROPERTY_TYPE_ICONS[t],
+}))
+
+const columnDraftName = ref('')
+const newOptionName = ref('')
+const addPropertyOpen = ref(false)
+const newPropertyName = ref('')
+const newPropertyType = ref<PropertyType>('text')
+
+function closeColumnMenu(): void {
+  columnMenuKey.value = null
+}
+
+function openColumnMenu(field: ResolvedField): void {
+  columnMenuKey.value = field.key
+  columnDraftName.value = field.name
+  newOptionName.value = ''
+}
+
+function saveColumnName(): void {
+  const f = columnMenuField.value
+  if (!f?.custom) return
+  propsStore.updateProperty(f.key, { name: columnDraftName.value })
+}
+
+function changeColumnType(type: PropertyType): void {
+  const f = columnMenuField.value
+  if (!f?.custom) return
+  propsStore.updateProperty(f.key, { type })
+}
+
+function addColumnOption(): void {
+  const f = columnMenuField.value
+  if (!f || !newOptionName.value.trim()) return
+  propsStore.addOption(f.key, newOptionName.value)
+  newOptionName.value = ''
+}
+
+function hideColumn(field: ResolvedField): void {
+  const view = propsStore.activeView
+  const hidden = [...(view?.hidden ?? []), field.key]
+  if (view) propsStore.updateView(view.id, { hidden })
+  else propsStore.saveView('自定义视图', { hidden, kind: 'table' })
+  closeColumnMenu()
+}
+
+function deleteColumn(field: ResolvedField): void {
+  if (!field.custom) return
+  if (!window.confirm(`删除属性「${field.name}」？所有投递上该属性的值会一并清除。`)) return
+  propsStore.removeProperty(field.key)
+  store.clearPropertyValues(field.key)
+  closeColumnMenu()
+}
+
+function submitAddProperty(): void {
+  if (!newPropertyName.value.trim()) return
+  const def = propsStore.addProperty(newPropertyName.value, newPropertyType.value)
+  // 新列默认可见：从隐藏集合里移除，并追加到视图列顺序末尾
+  const view = propsStore.activeView
+  if (view) {
+    propsStore.updateView(view.id, {
+      hidden: view.hidden.filter((h) => h !== def.id),
+      columns: [...(view.columns ?? tableFields.value.map((f) => f.key)), def.id],
+    })
+  }
+  addPropertyOpen.value = false
+  newPropertyName.value = ''
+  newPropertyType.value = 'text'
+}
+
 /** 视图切换（三态分段） */
 const VIEW_OPTIONS = [
   { k: 'board', l: '看板' },
-  { k: 'list', l: '列表' },
+  { k: 'list', l: '表格' },
   { k: 'pipeline', l: '全流程' },
 ] as const
 
@@ -838,57 +1086,186 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <!-- ═══════ 列表视图 ═══════ -->
-      <section v-else-if="prefs.viewMode === 'list'" class="card-glass overflow-x-auto p-2">
-        <table class="w-full text-left">
-          <thead>
-            <tr class="border-b border-neutral-200 text-[11px] text-neutral-400">
-              <th class="py-2.5 pl-3 pr-3 font-medium">状态</th>
-              <th class="py-2.5 pr-3 font-medium">公司 / 岗位</th>
-              <th class="py-2.5 pr-3 font-medium">渠道</th>
-              <th class="py-2.5 pr-3 font-medium">投递日期</th>
-              <th class="py-2.5 pr-3 font-medium">重要性</th>
-              <th class="py-2.5 pr-3 font-medium">标签</th>
-              <th class="py-2.5 pr-3 font-medium">更新时间</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="app in sortedApps"
-              :key="app.id"
-              class="cursor-pointer border-b border-neutral-200 transition-colors last:border-0 hover:bg-neutral-50"
-              @click="openDetail(app.id)"
+      <!-- ═══════ 多维表格视图（Notion 式：自定义属性 / 筛选 / 排序 / 多视图） ═══════ -->
+      <section
+        v-else-if="prefs.viewMode === 'list'"
+        class="card-glass flex min-h-0 flex-1 flex-col overflow-hidden"
+      >
+        <!-- 视图栏 -->
+        <div class="flex flex-wrap items-center gap-1.5 border-b border-neutral-200 px-3 py-2">
+          <button
+            v-for="v in viewTabs"
+            :key="v.id"
+            class="rounded-full border px-2.5 py-1 text-[11.5px] transition-colors"
+            :class="propsStore.activeViewId === v.id ? 'border-neutral-900 bg-neutral-100 text-neutral-900' : 'border-neutral-200 text-neutral-500 hover:border-neutral-400'"
+            @click="propsStore.setActiveView(v.id)"
+          >
+            {{ v.name }}
+          </button>
+          <button
+            class="rounded-full border border-dashed border-neutral-300 px-2.5 py-1 text-[11.5px] text-neutral-400 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+            @click="saveCurrentView"
+          >
+            ＋ 存为视图
+          </button>
+          <button
+            v-if="propsStore.activeView"
+            class="rounded px-1.5 py-1 text-[11.5px] text-neutral-400 hover:text-neutral-900"
+            @click="removeActiveView"
+          >
+            删除视图
+          </button>
+          <span class="ml-auto font-mono text-[11px] text-neutral-400">
+            {{ tableRows.length }} / {{ store.total }} 条
+          </span>
+        </div>
+
+        <!-- 筛选栏 -->
+        <div class="flex flex-wrap items-center gap-1.5 border-b border-neutral-200 px-3 py-2">
+          <button
+            class="rounded-lg border border-neutral-300 px-2 py-1 text-[11.5px] text-neutral-600 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+            @click="addCondition"
+          >
+            ＋ 筛选
+          </button>
+          <template v-if="viewFilter.conditions.length">
+            <button
+              class="rounded-lg border border-neutral-300 px-2 py-1 text-[11.5px] text-neutral-600"
+              :title="viewFilter.op === 'and' ? '全部条件都满足' : '任一条件满足'"
+              @click="setFilterOp(viewFilter.op === 'and' ? 'or' : 'and')"
             >
-              <td class="py-2.5 pl-3 pr-3">
-                <span
-                  class="rounded-full border px-2 py-0.5 text-[10.5px]"
-                  :class="[statusMeta(app.status, app.total_rounds).chip, statusMeta(app.status, app.total_rounds).text]"
+              {{ viewFilter.op === 'and' ? '且' : '或' }}
+            </button>
+            <div
+              v-for="c in viewFilter.conditions"
+              :key="c.id"
+              class="flex items-center gap-1 rounded-lg border border-neutral-200 bg-white px-1.5 py-1"
+            >
+              <select
+                class="max-w-[112px] rounded bg-transparent text-[11.5px] text-neutral-700 outline-none"
+                :value="c.field"
+                @change="patchCondition(c.id, { field: ($event.target as HTMLSelectElement).value })"
+              >
+                <option v-for="f in conditionFields" :key="f.key" :value="f.key">{{ f.name }}</option>
+              </select>
+              <select
+                class="rounded bg-transparent text-[11.5px] text-neutral-500 outline-none"
+                :value="c.operator"
+                @change="patchCondition(c.id, { operator: ($event.target as HTMLSelectElement).value as FilterOperator })"
+              >
+                <option v-for="op in operatorsOf(c.field)" :key="op" :value="op">{{ OPERATOR_LABELS[op] }}</option>
+              </select>
+              <input
+                v-if="!isValuelessOperator(c.operator)"
+                class="w-[104px] border-b border-neutral-200 px-1 text-[11.5px] outline-none focus:border-neutral-900"
+                :value="c.value ?? ''"
+                placeholder="值"
+                @input="patchCondition(c.id, { value: ($event.target as HTMLInputElement).value })"
+              />
+              <button class="px-1 text-[12px] text-neutral-300 hover:text-red-600" title="移除条件" @click="removeCondition(c.id)">
+                ✕
+              </button>
+            </div>
+          </template>
+          <span v-else class="text-[11.5px] text-neutral-400">按任意字段（含自定义属性）过滤</span>
+
+          <label class="ml-auto flex items-center gap-1.5 text-[11.5px] text-neutral-400">
+            <input
+              type="checkbox"
+              class="h-3.5 w-3.5 accent-neutral-900"
+              :checked="prefs.showAllFields"
+              @change="prefsStore.set({ showAllFields: ($event.target as HTMLInputElement).checked })"
+            />
+            显示全部内置列
+          </label>
+        </div>
+
+        <!-- 表格 -->
+        <div class="min-h-0 flex-1 overflow-auto">
+          <table class="w-full border-collapse text-left">
+            <thead class="sticky top-0 z-10 bg-white">
+              <tr class="border-b border-neutral-200">
+                <th
+                  v-for="f in tableFields"
+                  :key="f.key"
+                  class="whitespace-nowrap py-2 pl-3 pr-3 text-[11px] font-medium text-neutral-400"
                 >
-                  {{ statusMeta(app.status, app.total_rounds).label }}
-                </span>
-              </td>
-              <td class="py-2.5 pr-3">
-                <div class="text-[12.5px] font-medium text-neutral-900">{{ app.title }}</div>
-                <div class="text-[11px] text-neutral-400">{{ app.company }}</div>
-              </td>
-              <td class="py-2.5 pr-3 text-[12px] text-neutral-500">{{ app.channel || '—' }}</td>
-              <td class="py-2.5 pr-3 font-mono text-[11.5px] text-neutral-500">{{ app.applied_at || '—' }}</td>
-              <td class="py-2.5 pr-3 text-[11.5px] text-neutral-600">
-                {{ app.importance ? '★'.repeat(app.importance) : '—' }}
-              </td>
-              <td class="py-2.5 pr-3">
-                <div class="flex flex-wrap gap-1">
-                  <span v-for="t in app.tags" :key="t" class="rounded bg-neutral-100 px-1 py-0.5 text-[10px] text-neutral-600">#{{ t }}</span>
-                </div>
-              </td>
-              <td class="py-2.5 pr-3 font-mono text-[11px] text-neutral-400">
-                {{ app.updated_at.slice(0, 10) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div v-if="!sortedApps.length" class="py-10 text-center text-[12px] text-neutral-400">
-          没有匹配的投递
+                  <button class="flex items-center gap-1 hover:text-neutral-900" :title="`列设置：${f.name}`" @click="openColumnMenu(f)">
+                    <span class="text-[10px] text-neutral-300">{{ f.custom && f.type ? PROPERTY_TYPE_ICONS[f.type] : '·' }}</span>
+                    <span :class="propsStore.activeSorts[0]?.field === f.key ? 'text-neutral-900' : ''">{{ f.name }}</span>
+                    <span v-if="propsStore.activeSorts[0]?.field === f.key" class="text-[10px]">
+                      {{ propsStore.activeSorts[0]!.desc ? '↓' : '↑' }}
+                    </span>
+                  </button>
+                </th>
+                <th class="w-[64px] py-2 pr-3">
+                  <button
+                    class="rounded border border-dashed border-neutral-300 px-1.5 text-[12px] text-neutral-400 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+                    title="新增属性"
+                    @click="addPropertyOpen = true"
+                  >
+                    ＋
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="app in tableRows"
+                :key="app.id"
+                class="cursor-pointer border-b border-neutral-100 transition-colors last:border-0 hover:bg-neutral-50"
+                @click="openDetail(app.id)"
+              >
+                <td v-for="f in tableFields" :key="f.key" class="max-w-[220px] py-1.5 pl-3 pr-3 align-middle">
+                  <PropertyCell
+                    v-if="f.custom"
+                    :field="f"
+                    :value="app.properties?.[f.key]"
+                    @update="store.setProperty(app.id, f.key, $event)"
+                  />
+                  <template v-else-if="f.key === 'status'">
+                    <span
+                      class="whitespace-nowrap rounded-full border px-2 py-0.5 text-[10.5px]"
+                      :class="[statusMeta(app.status).chip, statusMeta(app.status).text]"
+                    >
+                      {{ statusMeta(app.status).label }}
+                    </span>
+                  </template>
+                  <template v-else-if="f.key === 'title'">
+                    <span class="truncate text-[12.5px] font-medium text-neutral-900">{{ app.title || '未命名岗位' }}</span>
+                  </template>
+                  <template v-else-if="f.key === 'importance'">
+                    <span class="text-[11.5px] text-neutral-600">{{ app.importance ? '★'.repeat(app.importance) : '—' }}</span>
+                  </template>
+                  <template v-else-if="f.key === 'tags' || f.key === 'groups'">
+                    <span class="flex flex-wrap gap-1">
+                      <span
+                        v-for="t in (f.key === 'tags' ? app.tags : (app.groups ?? []))"
+                        :key="t"
+                        class="rounded bg-neutral-100 px-1 py-0.5 text-[10px] text-neutral-600"
+                      >
+                        {{ f.key === 'tags' ? '#' : '' }}{{ t }}
+                      </span>
+                    </span>
+                  </template>
+                  <template v-else-if="f.key === 'updated_at'">
+                    <span class="font-mono text-[11px] text-neutral-400">{{ app.updated_at.slice(0, 10) }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="block truncate text-[12px] text-neutral-500">{{ getBuiltinText(app, f.key) }}</span>
+                  </template>
+                </td>
+                <td class="py-1.5 pr-3 text-right">
+                  <button class="text-[11px] text-neutral-400 hover:text-neutral-900" @click.stop="openDetail(app.id)">
+                    打开
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-if="!tableRows.length" class="py-12 text-center text-[12px] text-neutral-400">
+            没有匹配的投递 —— 放宽筛选条件，或点表头右侧「＋」加一列自定义属性
+          </div>
         </div>
       </section>
 
@@ -992,7 +1369,7 @@ onBeforeUnmount(() => {
           <div class="mb-2 text-[12px] font-medium text-neutral-600">视图</div>
           <div class="flex gap-2">
             <button
-              v-for="mode in ([{k:'board',l:'看板视图'},{k:'list',l:'列表视图'},{k:'pipeline',l:'全流程'}] as const)"
+              v-for="mode in ([{k:'board',l:'看板视图'},{k:'list',l:'表格视图'},{k:'pipeline',l:'全流程'}] as const)"
               :key="mode.k"
               class="flex-1 rounded-lg border py-2 text-[12.5px] transition-colors"
               :class="prefs.viewMode === mode.k ? 'border-neutral-900 bg-neutral-100 text-neutral-900' : 'border-neutral-300 text-neutral-500'"
@@ -1039,6 +1416,133 @@ onBeforeUnmount(() => {
           </button>
           <button class="rounded-lg border border-neutral-900 px-4 py-1.5 text-[12.5px] text-neutral-900" @click="showSettings = false">
             完成
+          </button>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- 列设置（多维表格） -->
+    <Modal v-if="columnMenuField" :title="`列设置：${columnMenuField.name}`" max-width="max-w-md" @close="closeColumnMenu">
+      <div class="space-y-5">
+        <div v-if="columnMenuField.custom">
+          <div class="mb-2 text-[12px] font-medium text-neutral-600">名称</div>
+          <div class="flex gap-2">
+            <input
+              v-model="columnDraftName"
+              class="min-w-0 flex-1 rounded-lg border border-neutral-300 px-2 py-1.5 text-[12.5px]"
+              @keydown.enter="saveColumnName"
+            />
+            <button class="shrink-0 rounded-lg border border-neutral-900 px-4 py-1.5 text-[12.5px] text-neutral-900" @click="saveColumnName">
+              保存
+            </button>
+          </div>
+        </div>
+        <p v-else class="text-[12px] leading-relaxed text-neutral-500">
+          「{{ columnMenuField.name }}」是内置字段，不可改名或删除。可以隐藏它，内容在投递编辑弹窗里修改。
+        </p>
+
+        <div v-if="columnMenuField.custom">
+          <div class="mb-2 text-[12px] font-medium text-neutral-600">类型</div>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="opt in PROPERTY_TYPE_OPTIONS"
+              :key="opt.type"
+              class="rounded-full border px-2.5 py-1 text-[11.5px] transition-colors"
+              :class="columnMenuField.type === opt.type ? 'border-neutral-900 bg-neutral-100 text-neutral-900' : 'border-neutral-300 text-neutral-500'"
+              @click="changeColumnType(opt.type)"
+            >
+              {{ opt.icon }} {{ opt.label }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="columnMenuField.custom && (columnMenuField.type === 'select' || columnMenuField.type === 'multi_select')">
+          <div class="mb-2 text-[12px] font-medium text-neutral-600">选项</div>
+          <div class="space-y-1.5">
+            <div v-for="opt in columnOptions" :key="opt.id" class="flex items-center gap-2">
+              <input
+                class="min-w-0 flex-1 rounded border border-neutral-300 px-2 py-1 text-[12px]"
+                :value="opt.name"
+                @change="propsStore.renameOption(columnMenuField!.key, opt.id, ($event.target as HTMLInputElement).value)"
+              />
+              <button class="px-1 text-[12px] text-neutral-300 hover:text-red-600" @click="propsStore.removeOption(columnMenuField!.key, opt.id)">
+                ✕
+              </button>
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                v-model="newOptionName"
+                placeholder="新增选项"
+                class="min-w-0 flex-1 rounded border border-neutral-300 px-2 py-1 text-[12px]"
+                @keydown.enter="addColumnOption"
+              />
+              <button class="shrink-0 rounded border border-neutral-300 px-2 py-1 text-[11.5px] text-neutral-600" @click="addColumnOption">
+                添加
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-3">
+          <button
+            class="rounded-lg border border-neutral-300 px-3 py-1.5 text-[12px] text-neutral-600 hover:border-neutral-900"
+            @click="toggleSortField(columnMenuField!.key)"
+          >
+            {{ propsStore.activeSorts[0]?.field === columnMenuField.key ? '切换升降序' : '按此列排序' }}
+          </button>
+          <button
+            class="rounded-lg border border-neutral-300 px-3 py-1.5 text-[12px] text-neutral-600 hover:border-neutral-900"
+            @click="hideColumn(columnMenuField!)"
+          >
+            隐藏该列
+          </button>
+          <button
+            v-if="columnMenuField.custom"
+            class="ml-auto rounded-lg border border-red-300 px-3 py-1.5 text-[12px] text-red-600 hover:border-red-500"
+            @click="deleteColumn(columnMenuField!)"
+          >
+            删除属性
+          </button>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- 新增属性 -->
+    <Modal v-if="addPropertyOpen" title="新增属性" max-width="max-w-md" @close="addPropertyOpen = false">
+      <div class="space-y-5">
+        <div>
+          <div class="mb-2 text-[12px] font-medium text-neutral-600">名称</div>
+          <input
+            v-model="newPropertyName"
+            placeholder="如「是否内推」「期望薪资」"
+            class="w-full rounded-lg border border-neutral-300 px-2 py-1.5 text-[12.5px]"
+            @keydown.enter="submitAddProperty"
+          />
+        </div>
+        <div>
+          <div class="mb-2 text-[12px] font-medium text-neutral-600">类型</div>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="opt in PROPERTY_TYPE_OPTIONS"
+              :key="opt.type"
+              class="rounded-full border px-2.5 py-1 text-[11.5px] transition-colors"
+              :class="newPropertyType === opt.type ? 'border-neutral-900 bg-neutral-100 text-neutral-900' : 'border-neutral-300 text-neutral-500'"
+              @click="newPropertyType = opt.type"
+            >
+              {{ opt.icon }} {{ opt.label }}
+            </button>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 border-t border-neutral-200 pt-3">
+          <button class="rounded-lg border border-neutral-300 px-4 py-1.5 text-[12.5px] text-neutral-600" @click="addPropertyOpen = false">
+            取消
+          </button>
+          <button
+            class="rounded-lg border border-neutral-900 bg-neutral-900 px-4 py-1.5 text-[12.5px] text-white disabled:border-neutral-300 disabled:bg-neutral-300"
+            :disabled="!newPropertyName.trim()"
+            @click="submitAddProperty"
+          >
+            新增
           </button>
         </div>
       </div>

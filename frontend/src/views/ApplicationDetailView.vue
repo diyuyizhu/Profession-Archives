@@ -5,18 +5,27 @@
  * - 状态操作（推进 / 标记终态）
  * - 关联内容：面试记录、复盘、沉淀的面经、归档入口
  */
-import type { Application, ApplicationPayload, ApplicationStatus, InterviewToolKind } from '@pa/shared'
+import type {
+  Application,
+  ApplicationPayload,
+  ApplicationStatus,
+  InterviewToolKind,
+  PropertyDef,
+} from '@pa/shared'
 import { APPLY_METHOD_LABELS } from '@pa/shared'
 import { nextStage, statusMeta } from '@pa/shared/application'
+import { resolveFields } from '@pa/shared/property'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import ApplicationEditModal from '@/components/application/ApplicationEditModal.vue'
 import Modal from '@/components/Modal.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import PropertyCell from '@/components/property/PropertyCell.vue'
 import PrimaryButton from '@/components/PrimaryButton.vue'
 import SecondaryButton from '@/components/SecondaryButton.vue'
 import { transitionTargets, useApplicationStore } from '@/stores/application'
+import { usePropertiesStore } from '@/stores/properties'
 import { useArchivesStore } from '@/stores/archives'
 import { useInterviewStore } from '@/stores/interview'
 import { useInterviewToolsStore } from '@/stores/interviewTools'
@@ -25,6 +34,12 @@ import { useQuestionBankStore } from '@/stores/questionBank'
 const route = useRoute()
 const router = useRouter()
 const appStore = useApplicationStore()
+const propsStore = usePropertiesStore()
+
+/** 属性定义 → 表格字段（PropertyCell 需要 kind/options） */
+function fieldOfProperty(p: PropertyDef) {
+  return resolveFields([p])[0]!
+}
 const interviewStore = useInterviewStore()
 const questionBank = useQuestionBankStore()
 const archivesStore = useArchivesStore()
@@ -409,6 +424,26 @@ onBeforeUnmount(() => {
               <div class="flex justify-between gap-3"><span class="text-neutral-400">URL</span><a v-if="app.url" :href="app.url" target="_blank" rel="noopener" class="truncate text-neutral-600 hover:underline">{{ app.url }}</a><span v-else>—</span></div>
               <div class="flex justify-between gap-3"><span class="text-neutral-400">标签</span><span>{{ app.tags.length ? app.tags.map((t) => '#' + t).join(' ') : '—' }}</span></div>
             </div>
+
+            <!-- 自定义属性（多维表格）：记录页里可直接编辑 -->
+            <div v-if="propsStore.properties.length" class="mt-4 border-t border-neutral-200 pt-3">
+              <div class="mb-2 text-[12px] font-medium text-neutral-500">自定义属性</div>
+              <div class="space-y-2">
+                <div v-for="p in propsStore.properties" :key="p.id" class="flex items-center justify-between gap-3">
+                  <span class="shrink-0 text-[12.5px] text-neutral-400">{{ p.name }}</span>
+                  <span class="min-w-0 flex-1 text-right">
+                    <PropertyCell
+                      :field="fieldOfProperty(p)"
+                      :value="app.properties?.[p.id]"
+                      @update="appStore.setProperty(app.id, p.id, $event)"
+                    />
+                  </span>
+                </div>
+              </div>
+            </div>
+            <p v-else class="mt-4 border-t border-neutral-200 pt-3 text-[11.5px] text-neutral-300">
+              还没有自定义属性 —— 在「投递看板 → 列表」视图点表头右侧「＋」添加
+            </p>
 
             <!-- JD -->
             <details class="mt-4">
