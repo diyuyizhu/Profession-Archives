@@ -1,6 +1,22 @@
-# Profession-Archives v0.2.3-beta · 生涯大脑
+# Profession-Archives v0.2.4-beta · 生涯大脑
 
 > 本地优先的个人求职全流程管理工具 —— 从岗位采集、简历生成、投递看板、面试复盘到 offer 归档，一条龙自己在本地搞定，数据不出本机。
+
+## v0.2.4 更新（AI 按官方文档对齐）
+
+- **修正模型名**：DeepSeek 官方当前模型是 **`deepseek-flash`**（DeepSeek-V4.1-Flash）与 **`deepseek-v4-pro`**。
+  上一版把 `deepseek-chat` / `deepseek-reasoner` 当作官方名 —— 那是旧代模型名，已下线，本版全部更正
+  （默认值、设置页预设、报错提示）
+- **按文档显式控制「思考模式」**：DeepSeek 思考模式默认开启且强度 high，对「结构化抽取」没有收益，
+  只会显著变慢变贵，还会让 temperature 失效。现在 JSON 类任务（简历解析 / 字段识别 / 岗位提取）
+  显式关闭思考模式；简历生成保留思考但降到 low
+- **max_tokens 显式设置**（JSON 8192 / 文本 16384），并检测 `finish_reason=length`
+  直接告诉你「输出被截断」，不再让你对着半截 JSON 猜
+- **错误码按官方表给可操作提示**：401 Key 错 / 402 余额不足 / 429 限速 / 500·503 服务端
+- 超时按文档「10 分钟未开始推理才断连」放大：JSON 120s / 文本 180s
+- 设置页 Endpoint 提示填 base_url，模型名不在官方列表时红字提醒
+
+> 对齐依据与结论表见 `docs/architecture.md` 4.3.1，改 AI 代码前先看那节。
 
 ## v0.2.3 更新（AI 排障 + 备份恢复重做）
 
@@ -59,8 +75,8 @@
 
 ### 第一步：运行
 
-- 下载解压后，**双击 `Profession-Archives-v0.2.3-win-x64.exe`**，绿色免安装，直接跑。
-- 也可用安装包：`Profession-Archives_0.2.3_x64-setup.exe`（NSIS）或 `Profession-Archives_0.2.3_x64_en-US.msi`。
+- 下载解压后，**双击 `Profession-Archives-v0.2.4-win-x64.exe`**，绿色免安装，直接跑。
+- 也可用安装包：`Profession-Archives_0.2.4_x64-setup.exe`（NSIS）或 `Profession-Archives_0.2.4_x64_en-US.msi`。
 - 首次打开是空的 —— 没有预设数据，从零开始。
 
 ### 第二步：开始记录
