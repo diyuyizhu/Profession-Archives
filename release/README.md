@@ -71,6 +71,24 @@
 - 新增「设置 → 外观」：跟随系统 / 白天 / 深夜 / 定时切换四档
 - 本地桥请求统一走 Bearer 配对鉴权；插件修复 `content.ts` 语法错误（此前无法构建）
 
+## 版本与归档
+
+`release/` 目录**只放最新版**，旧版统一收在 `release/历史版本/`（二进制不入 git，仅本机留存）：
+
+```text
+release/
+├── Profession-Archives-v0.2.4-win-x64.exe / .zip     ← 最新版（绿色版）
+├── Profession-Archives_0.2.4_x64-setup.exe / .msi    ← 最新版安装包
+├── Profession-Archives-extension-0.1.1-chrome/ + .zip ← 最新版插件
+├── Profession-Archives-extension-0.1.1.zip           ← 合并包（插件 + exe + 说明）
+├── 历史版本/                                          ← 旧版归档（本机留存，不入 git）
+│   ├── v0.2.0 / v0.2.1 / v0.2.2 / v0.2.3 的 exe、zip、setup.exe、msi
+│   └── extension-0.1.0（含更早的无版本目录）
+└── README.md                                          ← 本文件
+```
+
+> 归档约占 170 MB。确认不再需要旧版时，直接删掉 `历史版本/` 即可，不影响最新版。
+
 ## 怎么用
 
 ### 第一步：运行
@@ -78,6 +96,7 @@
 - 下载解压后，**双击 `Profession-Archives-v0.2.4-win-x64.exe`**，绿色免安装，直接跑。
 - 也可用安装包：`Profession-Archives_0.2.4_x64-setup.exe`（NSIS）或 `Profession-Archives_0.2.4_x64_en-US.msi`。
 - 首次打开是空的 —— 没有预设数据，从零开始。
+- 需要旧版请到 `历史版本/` 取（文件名带版本号）。
 
 ### 第二步：开始记录
 
