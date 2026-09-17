@@ -106,7 +106,7 @@ export function initSchema(): void {
       id                INTEGER PRIMARY KEY CHECK (id = 1),
       provider          TEXT NOT NULL DEFAULT 'cloud',
       cloud_endpoint    TEXT NOT NULL DEFAULT 'https://api.deepseek.com',
-      cloud_model       TEXT NOT NULL DEFAULT 'deepseek-chat',
+      cloud_model       TEXT NOT NULL DEFAULT 'deepseek-flash',
       cloud_api_key     TEXT NOT NULL DEFAULT '',
       local_endpoint    TEXT NOT NULL DEFAULT 'http://localhost:11434/v1',
       local_model       TEXT NOT NULL DEFAULT 'qwen2.5:7b',

@@ -674,10 +674,14 @@ export type SkillSnapshotPayload = Omit<SkillSnapshot, 'id'>
 /** AI 来源：云端（DeepSeek 兼容网关，默认） / 本地（Ollama） */
 export type AIProvider = 'cloud' | 'local'
 
-/** AI Provider 配置（E1 双模式） */
+/**
+ * AI Provider 配置（E1 双模式）。
+ * 云端默认对齐 DeepSeek 官方文档（https://api-docs.deepseek.com/zh-cn/）：
+ * base_url = https://api.deepseek.com（OpenAI 兼容格式），模型 deepseek-flash / deepseek-v4-pro。
+ */
 export interface AIConfig {
   provider: AIProvider
-  /** 云端 Anthropic 兼容网关 Endpoint */
+  /** 云端 OpenAI 兼容 Endpoint（程序自动拼 /chat/completions） */
   cloudEndpoint: string
   cloudModel: string
   /** API Key（本地优先自存 localStorage；后端落地后改加密存储 / 代理） */
@@ -695,7 +699,7 @@ export interface AIConfig {
 export const DEFAULT_AI_CONFIG: AIConfig = {
   provider: 'cloud',
   cloudEndpoint: 'https://api.deepseek.com',
-  cloudModel: 'deepseek-chat',
+  cloudModel: 'deepseek-flash',
   cloudApiKey: '',
   localEndpoint: 'http://localhost:11434/v1',
   localModel: 'qwen2.5:7b',

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 /**
- * AI 配置（E1 双模式）：云端 DeepSeek（Anthropic 兼容网关，默认）/ 本地 Ollama。
+ * AI 配置（E1 双模式）：云端 DeepSeek（OpenAI 兼容接口，默认）/ 本地 Ollama。
+ * 云端字段对齐官方文档 https://api-docs.deepseek.com/zh-cn/ ：
+ * base_url = https://api.deepseek.com，模型 deepseek-flash / deepseek-v4-pro。
  * 含 E3 隐私授权联动：云端调用需先授权数据出境；全局「仅用本地模型」开关强制本地。
  */
 import type { AIProvider } from '@pa/shared'
@@ -24,6 +26,14 @@ const tabs: ModuleTab[] = [
   { id: 'data', label: '数据管理', path: '/settings/data' },
 ]
 
+/** endpoint 指向 DeepSeek 但模型名不在官方列表 → 给出提示（不强制，允许自定义网关） */
+const modelLooksOff = computed(
+  () =>
+    config.value.cloudEndpoint.includes('deepseek.com') &&
+    config.value.cloudModel.trim() !== '' &&
+    !CLOUD_MODELS.includes(config.value.cloudModel.trim()),
+)
+
 const saved = ref(false)
 const error = ref('')
 let savedTimer: ReturnType<typeof setTimeout> | undefined
@@ -45,7 +55,7 @@ function selectProvider(p: AIProvider): void {
 }
 
 /** 云端模型预设（DeepSeek 官方只有这两个；写错模型名会直接 400） */
-const CLOUD_MODELS = ['deepseek-chat', 'deepseek-reasoner']
+const CLOUD_MODELS = ['deepseek-flash', 'deepseek-v4-pro']
 
 /** 测试连接：真正打一次模型，把配置问题暴露出来 */
 const testing = ref(false)
@@ -121,7 +131,7 @@ function save(): void {
               <span v-if="config.provider === 'cloud'" class="text-[12px] font-medium text-neutral-900">✓</span>
             </div>
             <div class="mt-1 text-[11.5px] text-neutral-500">
-              默认 · 经 Anthropic 兼容网关 · 需授权数据出境
+              默认 · OpenAI 兼容接口 · 需授权数据出境
             </div>
           </button>
           <button
@@ -148,11 +158,14 @@ function save(): void {
           <label class="block">
             <span class="mb-1.5 block text-xs text-neutral-500">Endpoint（OpenAI 兼容接口）</span>
             <input v-model="config.cloudEndpoint" class="input-trae" placeholder="https://api.deepseek.com" />
+            <span class="mt-1 block text-[10.5px] text-neutral-400">
+              填到 base_url 即可（程序自动拼 /chat/completions）；DeepSeek 官方为 https://api.deepseek.com
+            </span>
           </label>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label class="block">
               <span class="mb-1.5 block text-xs text-neutral-500">模型名</span>
-              <input v-model="config.cloudModel" class="input-trae" placeholder="deepseek-chat" list="cloud-model-presets" />
+              <input v-model="config.cloudModel" class="input-trae" placeholder="deepseek-flash" list="cloud-model-presets" />
               <datalist id="cloud-model-presets">
                 <option v-for="m in CLOUD_MODELS" :key="m" :value="m" />
               </datalist>
@@ -167,7 +180,12 @@ function save(): void {
                   {{ m }}
                 </button>
               </div>
-              <span class="mt-1 block text-[10.5px] text-neutral-400">DeepSeek 官方仅此两个模型名，写错会直接报 400</span>
+              <span class="mt-1 block text-[10.5px] text-neutral-400">
+                DeepSeek 官方当前仅此两个模型名（旧名 deepseek-chat / deepseek-reasoner 已下线），写错会直接报 400
+              </span>
+              <span v-if="modelLooksOff" class="mt-1 block text-[10.5px] text-red-600">
+                ⚠ 当前模型名不在 DeepSeek 官方列表里，调用大概率会报 400；用第三方网关可忽略
+              </span>
             </label>
             <label class="block">
               <span class="mb-1.5 block text-xs text-neutral-500">API Key</span>

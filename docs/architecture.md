@@ -140,9 +140,35 @@ Profession-Archives/
 
 ### 4.3 AI Provider 抽象
 
-- `server/src/ai/provider.ts` 提供 `AIConfig → LanguageModel` 工厂：DeepSeek（`@ai-sdk/openai` 配 baseURL）、Ollama（本地 `:11434/v1`）、预留 Anthropic。
-- `prompts/` 按能力分文件：`extract`（素材提炼）、`polish`（简历润色）、`match`（JD 语义匹配）、`reflect`（面试复盘）、`learn`（短板分析/学习计划）。
-- 配置存 `ai_provider_config` 表；未配置时首次启动引导。E3 隐私授权（云端调用提示 + 全局"仅本地模型"开关）在 AI 层强制接入。
+- 实现位置：**桌面端在 Rust 桥内**（`src-tauri/src/ai.rs`，ureq 直连 OpenAI 兼容接口），
+  `server/src/services/aiService.ts` 是同逻辑的 Node 版（开发/备用）。
+- Prompt 按能力内联在 `ai.rs::prompt_of`：`AnalyzeFields`（表单字段识别）、`ExtractJob`（岗位提取）、
+  `ParseResume`（简历解析）、`GenerateResume`（特化简历）、`Ping`（连通性自检）。
+- 配置：前端 `pa-ai-config-v1`（localStorage）为源，启动与保存时经 `POST /api/bridge/sync` 同步到桥侧
+  `ai-config.json`；未配置时 AI 调用返回明确原因。E3 隐私授权（云端需 `dataExitConsented`、
+  全局 `localOnly` 强制本地）在 AI 层强制接入。
+- 自检：`POST /api/automation/ai/ping` + 设置页「测试连接」——真正打一次模型，把配置问题当场暴露。
+
+#### 4.3.1 云端参数对齐 DeepSeek 官方文档
+
+> 依据 <https://api-docs.deepseek.com/zh-cn/>（2026 复核）。改 AI 相关代码前先核对这节。
+
+| 项 | 官方规定 | 本项目取值 |
+|---|---|---|
+| base_url（OpenAI 格式） | `https://api.deepseek.com` | 默认 Endpoint；程序自动拼 `/chat/completions` |
+| 模型名 | `deepseek-flash`(V4.1-Flash) / `deepseek-v4-pro` | 默认 `deepseek-flash`；设置页给预设按钮 + 非法名提示 |
+| 旧模型名 | `deepseek-chat` / `deepseek-reasoner` 已不在现行文档 | 仅作为「已下线」提示文案出现 |
+| 思考模式 | **默认开启**，`thinking.type` = enabled/disabled，`reasoning_effort` = none/low/high/max（默认 high） | JSON 类任务显式 `disabled`（要确定性 + 低延迟）；简历生成 `enabled` + effort `low` |
+| 思考模式下的 temperature | **不生效**（不报错）；top_p 下限被抬到 0.95 | 仅在非思考路径依赖 temperature（JSON 任务 0.1） |
+| `max_tokens` | 1 ~ 384K；不设时非思考默认 8K、思考默认 64K | JSON 8192；文本 16384（并检测 `finish_reason=length` 报截断） |
+| JSON Output | `response_format={"type":"json_object"}`，**prompt 必须含 json 字样**，可能偶发空 content | JSON 任务启用；各 prompt 均含「输出 JSON」 |
+| 错误码 | 400 格式 / 401 认证 / 402 余额 / 422 参数 / 429 限速 / 500·503 服务端 | `status_hint()` 逐码给可操作提示；并把 API 错误正文透出 |
+| 请求保活 | 非流式会持续返回空行；服务端 10 分钟未开始推理才断连 | 客户端超时给足余量：JSON 120s / 文本 180s |
+| 并发限制 | flash 2500 / v4-pro 500（账号级） | 本地单人使用不触及 |
+
+**为什么 JSON 任务关掉思考模式**：思维链对结构化抽取没有收益，却会把延迟和费用放大数倍，
+且 `temperature` 失效导致输出稳定性下降；简历解析失败最常见的两个现象
+（「超时」与「返回不是合法 JSON」）都直接源于此。
 
 ### 4.4 云端预留接口（cloud/，后置实现）
 

@@ -35,7 +35,7 @@ export function getAiConfig(): AiConfigRow {
   const def: AiConfigRow = {
     provider: 'cloud',
     cloud_endpoint: 'https://api.deepseek.com',
-    cloud_model: 'deepseek-chat',
+    cloud_model: 'deepseek-flash',
     cloud_api_key: '',
     local_endpoint: 'http://localhost:11434/v1',
     local_model: 'qwen2.5:7b',
