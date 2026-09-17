@@ -268,6 +268,14 @@ fn handle(mut req: Request, store: Arc<Mutex<BridgeStore>>, store_path: PathBuf,
                 Err(e) => (400, e),
             }
         }
+    } else if path == "/api/automation/ai/ping" {
+        // 设置页「测试连接」：真正打一次模型，返回 ok/text 或带原因的错误
+        let auth = check_auth(&req, &store);
+        if let Err(e) = auth {
+            (401, e)
+        } else {
+            run_ai(&app_data_dir, AiCapability::Ping, "ping")
+        }
     } else if path == "/api/automation/ai/parse-resume" {
         let auth = check_auth(&req, &store);
         if let Err(e) = auth {
@@ -735,7 +743,7 @@ fn run_ai(app_data_dir: &PathBuf, cap: AiCapability, raw: &str) -> (u16, String)
     let input = extract_ai_input(raw);
     match ai::call_ai(app_data_dir, cap, &input) {
         Ok(text) => match cap {
-            AiCapability::GenerateResume => {
+            AiCapability::GenerateResume | AiCapability::Ping => {
                 let escaped = serde_json::to_string(&text).unwrap_or_else(|_| "\"\"".into());
                 (200, format!(r#"{{"ok":true,"text":{}}}"#, escaped))
             }

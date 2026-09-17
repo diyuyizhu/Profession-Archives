@@ -14,6 +14,8 @@ pub enum AiCapability {
     ExtractJob,
     GenerateResume,
     ParseResume,
+    /// 连通性自检（设置页「测试连接」用）
+    Ping,
 }
 
 /// 与 shared AIConfig 对齐的配置结构（前端 JSON 为 camelCase）
@@ -100,6 +102,7 @@ fn prompt_of(cap: AiCapability) -> &'static str {
         AiCapability::GenerateResume => {
             "你是简历撰写专家。根据给定的个人档案与岗位 JD，生成一份针对该岗位的特化简历正文（Markdown），突出匹配 JD 的经历与技能。直接输出简历正文。"
         }
+        AiCapability::Ping => "你是连通性测试助手。无论用户发什么，只回复两个字：pong",
         AiCapability::ParseResume => {
             "你是简历解析器。从给定的简历文本中提取结构化信息，输出 JSON：{\"full_name\":\"\",\"email\":\"\",\"phone\":\"\",\"headline\":\"\",\"summary\":\"\",\"skills\":[{\"name\":\"\",\"category\":\"\",\"level\":0}],\"experiences\":[{\"role\":\"\",\"company\":\"\",\"description_md\":\"\",\"start_date\":\"\",\"end_date\":\"\"}],\"education\":[{\"school\":\"\",\"degree\":\"\",\"major\":\"\",\"start_date\":\"\",\"end_date\":\"\"}],\"projects\":[{\"name\":\"\",\"summary\":\"\",\"description_md\":\"\"}]}。缺失字段用空字符串或空数组。只输出 JSON，不要解释。"
         }
@@ -179,7 +182,38 @@ struct UrlParts {
     host: String,
 }
 
-/// 调用 OpenAI 兼容接口，15s 超时
+/// 送给模型的输入长度上限（超长简历会拖慢响应、拉高费用；截断而非报错）
+const MAX_INPUT_CHARS: usize = 12_000;
+
+/// 需要 JSON 输出的能力（用低温度 + JSON 模式 + 更长超时）
+fn is_json_capability(cap: AiCapability) -> bool {
+    !matches!(cap, AiCapability::GenerateResume | AiCapability::Ping)
+}
+
+/// 从 API 错误响应体里取出人类可读信息（DeepSeek 返回 {"error":{"message":"..."}}）
+fn extract_api_error(body: &str) -> String {
+    let v: serde_json::Value = match serde_json::from_str(body) {
+        Ok(v) => v,
+        Err(_) => return body.trim().chars().take(300).collect(),
+    };
+    let msg = v
+        .get("error")
+        .and_then(|e| e.get("message").or_else(|| e.get("code")))
+        .or_else(|| v.get("message"))
+        .or_else(|| v.get("error"))
+        .and_then(|m| m.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if msg.is_empty() {
+        body.trim().chars().take(300).collect()
+    } else {
+        msg
+    }
+}
+
+/// 调用 OpenAI 兼容接口。
+/// 超时按能力区分：JSON 结构化任务给足 90s（长简历很慢），文本生成 60s。
 pub fn call_ai(
     app_data_dir: &PathBuf,
     cap: AiCapability,
@@ -210,17 +244,24 @@ pub fn call_ai(
     assert_safe_endpoint(endpoint, use_cloud)?;
 
     let url = format!("{}/chat/completions", endpoint.trim_end_matches('/'));
-    let body = serde_json::json!({
+    let json_cap = is_json_capability(cap);
+    // 结构化任务要确定性：低温度 + JSON 模式 + 足够的 max_tokens（否则长简历的 JSON 会被截断）
+    let mut body = serde_json::json!({
         "model": model,
         "messages": [
             { "role": "system", "content": prompt_of(cap) },
-            { "role": "user", "content": input },
+            { "role": "user", "content": truncate_input(input) },
         ],
-        "temperature": 0.6,
+        "temperature": if json_cap { 0.1 } else { 0.6 },
+        "max_tokens": 8192,
     });
+    if json_cap {
+        body["response_format"] = serde_json::json!({ "type": "json_object" });
+    }
 
+    let timeout_secs = if json_cap { 90 } else { 60 };
     let agent = ureq::AgentBuilder::new()
-        .timeout(Duration::from_secs(15))
+        .timeout(Duration::from_secs(timeout_secs))
         .build();
 
     let mut req = agent.post(&url).set("Content-Type", "application/json");
@@ -228,20 +269,30 @@ pub fn call_ai(
         req = req.set("Authorization", &format!("Bearer {}", api_key));
     }
 
-    let resp = req
-        .send_string(&body.to_string())
-        .map_err(|e| match e {
-            ureq::Error::Status(code, _) => format!("AI 调用失败：HTTP {}", code),
-            ureq::Error::Transport(t) => {
-                if t.kind() == ureq::ErrorKind::Io
-                    && t.to_string().contains("timed out")
-                {
-                    "AI 调用超时（15s）".to_string()
-                } else {
-                    format!("AI 调用失败：{}", t)
-                }
+    let resp = req.send_string(&body.to_string()).map_err(|e| match e {
+        ureq::Error::Status(code, resp) => {
+            // 关键：把 API 的错误正文透出来（否则用户只看到 HTTP 400，无从判断）
+            let detail = resp.into_string().unwrap_or_default();
+            let msg = extract_api_error(&detail);
+            if msg.to_lowercase().contains("model") {
+                format!(
+                    "AI 调用失败：HTTP {} · {}（请检查模型名：DeepSeek 云端为 deepseek-chat / deepseek-reasoner）",
+                    code, msg
+                )
+            } else if msg.is_empty() {
+                format!("AI 调用失败：HTTP {}", code)
+            } else {
+                format!("AI 调用失败：HTTP {} · {}", code, msg)
             }
-        })?;
+        }
+        ureq::Error::Transport(t) => {
+            if t.kind() == ureq::ErrorKind::Io && t.to_string().contains("timed out") {
+                format!("AI 调用超时（{}s）——长简历可换更快的模型，或改用本地 Ollama", timeout_secs)
+            } else {
+                format!("AI 调用失败：{}（Endpoint 是否可达？本地模式需先启动 Ollama）", t)
+            }
+        }
+    })?;
 
     let data: serde_json::Value =
         resp.into_json().map_err(|e| format!("AI 响应解析失败：{}", e))?;
@@ -258,4 +309,13 @@ pub fn call_ai(
         return Err("AI 返回为空".into());
     }
     Ok(text)
+}
+
+/// 截断超长输入（按字符，避免切坏 UTF-8）
+fn truncate_input(input: &str) -> String {
+    if input.chars().count() <= MAX_INPUT_CHARS {
+        return input.to_string();
+    }
+    let head: String = input.chars().take(MAX_INPUT_CHARS).collect();
+    format!("{head}\n\n（输入过长已截断）")
 }

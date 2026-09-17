@@ -2,6 +2,9 @@
  * Integration 冒烟测试：覆盖 shared 关键流程 + server 核心逻辑。
  * 运行：npx tsx tests/smoke.ts
  */
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+
 import {
   boardStages,
   buildApplicationStats,
@@ -34,6 +37,9 @@ import { parseEmailForApplication } from '../shared/src/email.ts'
 import { buildResumeDraft, matchJdToProfile, extractHighlights } from '../shared/src/ai.ts'
 import { groupSkillHistory, planProgress } from '../shared/src/skill.ts'
 import type { Application, ApplicationEvent, Profile } from '../shared/src/index.ts'
+
+// server 冒烟测试用临时数据目录：避免把测试档案（"冒烟"）写进真实 .pa-data
+process.env.PA_DATA_DIR = path.join(tmpdir(), 'pa-smoke-' + Date.now())
 
 let passed = 0
 let failed = 0

@@ -36,6 +36,12 @@ export async function parseResume(text: string): Promise<ParsedResume> {
   return data.parsed ?? {}
 }
 
+/** 连通性自检：真正打一次模型（设置页「测试连接」用） */
+export async function pingAi(): Promise<string> {
+  const data = await callAi<{ text: string }>('/api/automation/ai/ping', { ping: true })
+  return data.text ?? ''
+}
+
 /** 表单字段 AI 识别 */
 export async function analyzeFields(fields: unknown[]): Promise<Array<{ key: string; target: string }>> {
   const data = await callAi<{ mappings: Array<{ key: string; target: string }> }>(

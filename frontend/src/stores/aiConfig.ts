@@ -98,5 +98,16 @@ export const useAIConfigStore = defineStore('aiConfig', () => {
     persist()
   }
 
-  return { config, setProvider, update, consentDataExit, setLocalOnly }
+  /**
+   * 把当前配置推给本地桥。
+   * 启动时必须调一次：桥侧 ai-config.json 只在「保存设置」时写入，
+   * 若中途同步失败或换过 token，桥会一直用旧配置（表现为「AI 未配置」）。
+   */
+  function syncToBridge(): void {
+    // 别用「云端但没填 Key」的空配置覆盖桥侧已有配置（否则重装/清数据会把 Key 冲掉）
+    if (config.value.provider === 'cloud' && !config.value.cloudApiKey.trim()) return
+    postToBridge('/api/bridge/sync', { aiConfig: config.value })
+  }
+
+  return { config, setProvider, update, consentDataExit, setLocalOnly, syncToBridge }
 })

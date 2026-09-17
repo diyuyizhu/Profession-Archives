@@ -176,6 +176,20 @@ export const useProfileStore = defineStore('profile', () => {
     saveProfile(profile.value)
   }
 
+  /** 把档案摘要推给本地桥（插件填表用）；启动时调一次，避免桥侧摘要过期 */
+  function syncToBridge(): void {
+    const p = profile.value
+    postToBridge('/api/bridge/sync', {
+      profileSummary: {
+        full_name: p.full_name ?? '',
+        email: p.email ?? '',
+        phone: p.phone ?? '',
+        headline: p.headline ?? '',
+        summary: p.summary ?? '',
+      },
+    })
+  }
+
   return {
     profile,
     careerCard,
@@ -187,5 +201,6 @@ export const useProfileStore = defineStore('profile', () => {
     removeJournalEntry,
     resetEmpty,
     importResume,
+    syncToBridge,
   }
 })

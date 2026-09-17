@@ -9,6 +9,8 @@ import { computed, ref } from 'vue'
 import ModuleTabs, { type ModuleTab } from '@/components/ModuleTabs.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import PrimaryButton from '@/components/PrimaryButton.vue'
+import SecondaryButton from '@/components/SecondaryButton.vue'
+import { pingAi } from '@/lib/aiClient'
 import { useAIConfigStore } from '@/stores/aiConfig'
 
 const store = useAIConfigStore()
@@ -40,6 +42,29 @@ function safeAction(action: () => void): void {
 
 function selectProvider(p: AIProvider): void {
   safeAction(() => store.setProvider(p))
+}
+
+/** 云端模型预设（DeepSeek 官方只有这两个；写错模型名会直接 400） */
+const CLOUD_MODELS = ['deepseek-chat', 'deepseek-reasoner']
+
+/** 测试连接：真正打一次模型，把配置问题暴露出来 */
+const testing = ref(false)
+const testResult = ref<{ ok: boolean; text: string } | null>(null)
+
+async function testConnection(): Promise<void> {
+  if (testing.value) return
+  testing.value = true
+  testResult.value = null
+  try {
+    // 先落盘当前配置（含桥同步），再让桥用新配置发起调用
+    safeAction(() => store.update({ ...config.value }))
+    const reply = await pingAi()
+    testResult.value = { ok: true, text: '连接成功，模型回复：' + reply.slice(0, 40) }
+  } catch (e) {
+    testResult.value = { ok: false, text: e instanceof Error ? e.message : String(e) }
+  } finally {
+    testing.value = false
+  }
 }
 
 function save(): void {
@@ -121,13 +146,28 @@ function save(): void {
         <div class="mb-4 text-[13px] font-semibold text-neutral-900">云端配置</div>
         <div class="space-y-4">
           <label class="block">
-            <span class="mb-1.5 block text-xs text-neutral-500">Endpoint（Anthropic 兼容网关）</span>
+            <span class="mb-1.5 block text-xs text-neutral-500">Endpoint（OpenAI 兼容接口）</span>
             <input v-model="config.cloudEndpoint" class="input-trae" placeholder="https://api.deepseek.com" />
           </label>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label class="block">
               <span class="mb-1.5 block text-xs text-neutral-500">模型名</span>
-              <input v-model="config.cloudModel" class="input-trae" placeholder="deepseek-chat" />
+              <input v-model="config.cloudModel" class="input-trae" placeholder="deepseek-chat" list="cloud-model-presets" />
+              <datalist id="cloud-model-presets">
+                <option v-for="m in CLOUD_MODELS" :key="m" :value="m" />
+              </datalist>
+              <div class="mt-1.5 flex flex-wrap gap-1.5">
+                <button
+                  v-for="m in CLOUD_MODELS"
+                  :key="m"
+                  class="rounded-full border px-2 py-0.5 text-[11px] transition-colors"
+                  :class="config.cloudModel === m ? 'border-neutral-900 bg-neutral-100 text-neutral-900' : 'border-neutral-300 text-neutral-500 hover:border-neutral-900'"
+                  @click="safeAction(() => store.update({ cloudModel: m }))"
+                >
+                  {{ m }}
+                </button>
+              </div>
+              <span class="mt-1 block text-[10.5px] text-neutral-400">DeepSeek 官方仅此两个模型名，写错会直接报 400</span>
             </label>
             <label class="block">
               <span class="mb-1.5 block text-xs text-neutral-500">API Key</span>
@@ -181,6 +221,9 @@ function save(): void {
       <!-- 保存 -->
       <div class="mt-6 flex items-center gap-3">
         <PrimaryButton @click="save">保存配置</PrimaryButton>
+        <SecondaryButton :disabled="testing" @click="testConnection">
+          {{ testing ? '测试中…' : '测试连接' }}
+        </SecondaryButton>
         <span
           v-if="saved"
           role="status"
@@ -197,6 +240,16 @@ function save(): void {
         >
           {{ error }}
         </span>
+      </div>
+
+      <!-- 测试连接结果 -->
+      <div
+        v-if="testResult"
+        role="status"
+        class="mt-3 rounded-lg border px-3.5 py-2.5 text-[12px] leading-relaxed"
+        :class="testResult.ok ? 'border-neutral-300 bg-neutral-50 text-neutral-700' : 'border-red-300 bg-red-50/50 text-red-600'"
+      >
+        {{ testResult.ok ? '✓' : '✕' }} {{ testResult.text }}
       </div>
     </div>
   </div>

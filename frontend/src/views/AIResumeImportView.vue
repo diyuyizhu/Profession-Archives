@@ -31,6 +31,8 @@ const resumeText = ref('')
 const parsing = ref(false)
 const parsed = ref<ParsedResume | null>(null)
 const msg = ref('')
+/** 消息是否为错误（决定红/灰与角色）：不再靠字符串前缀猜，避免错误被当成普通提示 */
+const msgIsError = ref(false)
 const showConfirm = ref(false)
 
 const hasProfileContent = computed(() => !profileStore.isEmpty)
@@ -60,6 +62,7 @@ async function onPickFile(e: Event): Promise<void> {
   if (!file) return
   const name = file.name.toLowerCase()
   msg.value = ''
+  msgIsError.value = false
   parsed.value = null
   try {
     if (name.endsWith('.txt') || name.endsWith('.md')) {
@@ -79,9 +82,11 @@ async function onPickFile(e: Event): Promise<void> {
       resumeText.value = await file.text()
     }
     if (!resumeText.value.trim()) throw new Error('未提取到文本（可能是扫描件 / 纯图片简历）')
+    msgIsError.value = false
     msg.value = `已读取「${file.name}」（${resumeText.value.length} 字），点「AI 解析」写入档案`
   } catch (err) {
-    msg.value = err instanceof Error ? err.message : '文件读取失败'
+    msgIsError.value = true
+    msg.value = '读取失败：' + (err instanceof Error ? err.message : '未知错误')
   } finally {
     input.value = ''
   }
@@ -94,11 +99,15 @@ async function doParse(): Promise<void> {
   }
   parsing.value = true
   msg.value = ''
+  msgIsError.value = false
   parsed.value = null
   try {
     parsed.value = await parseResume(resumeText.value.trim())
+    msgIsError.value = false
+    msg.value = '解析完成，请核对右侧结果后点「写入档案」'
   } catch (e) {
-    msg.value = e instanceof Error ? e.message : '解析失败'
+    msgIsError.value = true
+    msg.value = '解析失败：' + (e instanceof Error ? e.message : '未知错误')
   } finally {
     parsing.value = false
   }
@@ -135,10 +144,12 @@ function writeArchive(mode: 'merge' | 'overwrite'): void {
       })
     }
     showConfirm.value = false
+    msgIsError.value = false
     msg.value = '已写入档案并复刻基础简历到简历树'
     setTimeout(() => (msg.value = ''), 4000)
   } catch (e) {
-    msg.value = e instanceof Error ? e.message : '写入失败'
+    msgIsError.value = true
+    msg.value = '写入失败：' + (e instanceof Error ? e.message : '未知错误')
   }
 }
 </script>
@@ -171,8 +182,9 @@ function writeArchive(mode: 'merge' | 'overwrite'): void {
           </PrimaryButton>
           <div
             v-if="msg"
-            class="mt-3 rounded-lg border px-3 py-2 text-[12px]"
-            :class="msg.startsWith('解析失败') || msg.startsWith('写入失败') ? 'border-red-300 text-red-600' : 'border-neutral-200 text-neutral-600'"
+            class="mt-3 rounded-lg border px-3 py-2 text-[12px] leading-relaxed"
+            :class="msgIsError ? 'border-red-300 bg-red-50/40 text-red-600' : 'border-neutral-200 text-neutral-600'"
+            :role="msgIsError ? 'alert' : 'status'"
           >
             {{ msg }}
           </div>
