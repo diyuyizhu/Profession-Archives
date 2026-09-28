@@ -21,6 +21,14 @@ const routes = [
     meta: { title: '我的档案', code: 'A', milestone: 'M1' },
   },
 
+  /* ── 岗位市场（G） ── */
+  {
+    path: '/job-market',
+    name: 'job-market',
+    component: () => import('../views/JobMarketView.vue'),
+    meta: { title: '岗位市场', code: 'G', milestone: 'M4' },
+  },
+
   /* ── 投递看板（B） ── */
   {
     path: '/tracking',

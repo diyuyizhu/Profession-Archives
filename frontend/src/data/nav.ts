@@ -26,6 +26,14 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { key: 'archive', code: 'A', title: '我的档案', path: '/archive', icon: iconOf('archive') },
   { key: 'tracking', code: 'B', title: '投递看板', path: '/tracking', icon: iconOf('tracking') },
+  {
+    key: 'jobs',
+    code: 'G',
+    title: '岗位市场',
+    path: '/job-market',
+    // 公文包（Lucide briefcase，MIT）
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+  },
   { key: 'resume', code: 'E', title: '简历', path: '/resume', icon: iconOf('ai') },
   { key: 'automation', code: 'D', title: '自动投递', path: '/automation', icon: iconOf('automation') },
   { key: 'growth', code: 'F', title: '成长追踪', path: '/growth', icon: iconOf('growth') },

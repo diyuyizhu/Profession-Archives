@@ -10,9 +10,25 @@ import { computed, ref } from 'vue'
 
 import { uid } from '@/data/seed'
 
-const PROPERTIES_KEY = 'pa-application-properties-v1'
-const VIEWS_KEY = 'pa-application-views-v1'
-const ACTIVE_VIEW_KEY = 'pa-application-active-view-v1'
+/**
+ * 作用域：投递（application）/ 岗位（job）。
+ * 同一个「属性 + 视图」机制服务两个实体，只靠存储键区分，互不干扰。
+ */
+export type PropertyScope = 'application' | 'job'
+
+interface ScopeKeys {
+  properties: string
+  views: string
+  activeView: string
+}
+
+function keysOf(scope: PropertyScope): ScopeKeys {
+  return {
+    properties: `pa-${scope}-properties-v1`,
+    views: `pa-${scope}-views-v1`,
+    activeView: `pa-${scope}-active-view-v1`,
+  }
+}
 
 function load<T>(key: string): T | null {
   try {
@@ -60,16 +76,19 @@ function normalizeProperties(raw: unknown): PropertyDef[] {
   return out
 }
 
-function loadViews(): BoardView[] {
-  const raw = load<unknown>(VIEWS_KEY)
+function loadViews(viewsKey: string): BoardView[] {
+  const raw = load<unknown>(viewsKey)
   if (!Array.isArray(raw)) return []
   return raw.map(normalizeView).filter((v): v is BoardView => v !== null)
 }
 
-export const usePropertiesStore = defineStore('properties', () => {
-  const properties = ref<PropertyDef[]>(normalizeProperties(load<unknown>(PROPERTIES_KEY)))
-  const views = ref<BoardView[]>(loadViews())
-  const activeViewId = ref<string>(load<string>(ACTIVE_VIEW_KEY) ?? '')
+/** 生成某个作用域的 store setup（投递 / 岗位各实例化一份） */
+function createPropertiesSetup(scope: PropertyScope) {
+  const KEYS = keysOf(scope)
+  return () => {
+  const properties = ref<PropertyDef[]>(normalizeProperties(load<unknown>(KEYS.properties)))
+  const views = ref<BoardView[]>(loadViews(KEYS.views))
+  const activeViewId = ref<string>(load<string>(KEYS.activeView) ?? '')
 
   /** 当前视图：'' 表示内置的「全部投递」视图（无筛选、默认排序） */
   const activeView = computed<BoardView | null>(
@@ -77,10 +96,10 @@ export const usePropertiesStore = defineStore('properties', () => {
   )
 
   function persistProperties(): void {
-    save(PROPERTIES_KEY, properties.value)
+    save(KEYS.properties, properties.value)
   }
   function persistViews(): void {
-    save(VIEWS_KEY, views.value)
+    save(KEYS.views, views.value)
   }
 
   /* ── 属性表结构 ── */
@@ -157,7 +176,7 @@ export const usePropertiesStore = defineStore('properties', () => {
 
   function setActiveView(id: string): void {
     activeViewId.value = id
-    save(ACTIVE_VIEW_KEY, id)
+    save(KEYS.activeView, id)
   }
 
   function saveView(name: string, snapshot: Partial<Pick<BoardView, 'kind' | 'filter' | 'sorts' | 'hidden' | 'columns'>>): BoardView {
@@ -214,4 +233,11 @@ export const usePropertiesStore = defineStore('properties', () => {
     removeView,
     duplicateView,
   }
-})
+  }
+}
+
+/** 投递的多维表格配置 */
+export const usePropertiesStore = defineStore('properties', createPropertiesSetup('application'))
+
+/** 岗位库的多维表格配置（同机制、不同存储键，与投递互不干扰） */
+export const useJobPropertiesStore = defineStore('jobProperties', createPropertiesSetup('job'))

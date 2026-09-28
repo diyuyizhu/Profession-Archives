@@ -286,6 +286,25 @@ fn handle(mut req: Request, store: Arc<Mutex<BridgeStore>>, store_path: PathBuf,
                 Err(e) => (400, e),
             }
         }
+    } else if path == "/api/job-source/fetch" && method == Method::Post {
+        // 岗位市场：代理转发到「用户自己跑的抓取服务」（爬虫与主程序分离）。
+        // 经桥转发而非前端直连，避免 webview 的 CORS / 混合内容限制。
+        // 协议见 shared/src/job.ts 的 JOB_SOURCE_PROTOCOL：GET {endpoint}/jobs?query=&city=&page=&limit=
+        let auth = check_auth(&req, &store);
+        if let Err(e) = auth {
+            (401, e)
+        } else {
+            match read_body(&mut req) {
+                Ok(raw) => match parse_job_source_request(&raw) {
+                    Ok((endpoint, params)) => match fetch_job_source(&endpoint, &params) {
+                        Ok(json) => (200, json),
+                        Err(e) => (502, format!(r#"{{"error":"{}"}}"#, e)),
+                    },
+                    Err(e) => (400, e),
+                },
+                Err(e) => (400, e),
+            }
+        }
     } else if path == "/api/import/extract-text" && method == Method::Post {
         // 档案导入：PDF / DOCX → 纯文本（供 AI 简历导入页使用）
         // 前端 lib/docxExtract.ts 有浏览器端 DOCX 兜底；PDF 只能走这里（CID 中文字体）
@@ -569,6 +588,78 @@ fn gen_id() -> String {
 }
 
 // ── 请求解析 ──
+
+/// 解析 /api/job-source/fetch 请求体 → (endpoint, params)
+fn parse_job_source_request(raw: &str) -> Result<(String, serde_json::Value), String> {
+    let v: serde_json::Value =
+        serde_json::from_str(raw).map_err(|e| format!(r#"{{"error":"JSON 解析失败：{e}"}}"#))?;
+    let endpoint = get_str(&v, "endpoint")
+        .filter(|s| !s.trim().is_empty())
+        .ok_or(r#"{"error":"需提供 endpoint"}"#.to_string())?;
+    let params = v.get("params").cloned().unwrap_or(serde_json::json!({}));
+    Ok((endpoint, params))
+}
+
+/// 拉取外部岗位抓取服务：GET {endpoint}/jobs?query=&city=&page=&limit=
+///
+/// 安全：只允许 http/https；请求本身仍受配对 token 保护（远程网页无法调用本桥）。
+fn fetch_job_source(endpoint: &str, params: &serde_json::Value) -> Result<String, String> {
+    let base = endpoint.trim().trim_end_matches('/');
+    if !(base.starts_with("http://") || base.starts_with("https://")) {
+        return Err("服务地址需以 http:// 或 https:// 开头".into());
+    }
+
+    let mut qs: Vec<String> = Vec::new();
+    for key in ["query", "city", "page", "limit"] {
+        let value = match params.get(key) {
+            Some(serde_json::Value::String(s)) if !s.is_empty() => s.clone(),
+            Some(serde_json::Value::Number(n)) => n.to_string(),
+            _ => continue,
+        };
+        qs.push(format!("{key}={}", urlencode(&value)));
+    }
+    let url = if qs.is_empty() {
+        format!("{base}/jobs")
+    } else {
+        format!("{base}/jobs?{}", qs.join("&"))
+    };
+
+    let agent = ureq::AgentBuilder::new()
+        .timeout(Duration::from_secs(40))
+        .build();
+    let resp = agent.get(&url).call().map_err(|e| match e {
+        ureq::Error::Status(code, _) => {
+            format!("抓取服务返回 HTTP {code}（检查服务是否已启动、路径是否为 /jobs）")
+        }
+        ureq::Error::Transport(t) => {
+            format!("连不上抓取服务：{t}（先启动你的抓取进程，并核对地址与端口）")
+        }
+    })?;
+
+    let text = resp
+        .into_string()
+        .map_err(|e| format!("读取抓取服务响应失败：{e}"))?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&text).map_err(|_| "抓取服务返回的不是 JSON".to_string())?;
+    if !parsed.get("jobs").map(|j| j.is_array()).unwrap_or(false) {
+        return Err(r#"响应缺少 jobs 数组（协议：{"jobs":[{...}]}）"#.into());
+    }
+    Ok(text)
+}
+
+/// 查询参数百分号编码（只保留 RFC 3986 unreserved 字符）
+fn urlencode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.as_bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(*b as char)
+            }
+            _ => out.push_str(&format!("%{:02X}", b)),
+        }
+    }
+    out
+}
 
 /// 解析 /api/import/extract-text 请求体 → (filename, content_base64)
 fn parse_extract(raw: &str) -> Result<(String, String), String> {

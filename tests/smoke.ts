@@ -34,6 +34,7 @@ import {
   sortApplications,
 } from '../shared/src/property.ts'
 import { parseEmailForApplication } from '../shared/src/email.ts'
+import { dedupeJobs, jobKey, jobToApplicationDraft, normalizeRemoteJob } from '../shared/src/job.ts'
 import { buildResumeDraft, matchJdToProfile, extractHighlights } from '../shared/src/ai.ts'
 import { groupSkillHistory, planProgress } from '../shared/src/skill.ts'
 import type { Application, ApplicationEvent, Profile } from '../shared/src/index.ts'
@@ -204,6 +205,67 @@ async function main(): Promise<void> {
   assert(planProgress({ tasks: [{ done: true }, { done: false }] }).pct === 50, '计划进度')
 
   // ── server ──
+  console.log('== shared: 岗位市场（来源规整 / 去重 / 转入投递）==')
+  const rawRemote: unknown[] = [
+    { external_id: 'a1', title: '后端开发工程师', company: '某科技', city: '北京', salary: '20-35K', tags: ['Go', 'MySQL'], posted_at: '2026-09-01' },
+    { title: '前端开发', company: ' 某科技 ', city: '上海' },
+    { external_id: 'a3' }, // 无 title/company → 无效
+    null, // 非对象 → 无效
+  ]
+  const normalizedJobs = rawRemote.map((r) =>
+    r && typeof r === 'object' ? normalizeRemoteJob(r as Record<string, unknown>, 'svc') : null,
+  )
+  const validJobs = normalizedJobs.filter((j): j is NonNullable<typeof j> => j !== null)
+  assert(validJobs.length === 2, '外部记录规整（丢弃既无岗位名又无公司的）')
+  assert(validJobs[0]!.tags.join(',') === 'Go,MySQL', '标签数组透传')
+  assert(validJobs[0]!.source_id === 'svc', '来源 id 注入')
+  assert(validJobs[1]!.company === '某科技', '文本字段去空白')
+
+  const seenKeys = new Set<string>()
+  const first = dedupeJobs(validJobs, seenKeys)
+  assert(first.fresh.length === 2 && first.duplicates === 0, '首次导入全部入库')
+  const second = dedupeJobs(validJobs, seenKeys)
+  assert(second.fresh.length === 0 && second.duplicates === 2, '重复导入按去重键跳过')
+
+  assert(
+    jobKey({ company: '某科技', title: '前端开发', city: '上海' }) ===
+      jobKey({ company: ' 某科技 ', title: '前端-开发', city: '上海 ' }),
+    '归一化判重键忽略空格与分隔符',
+  )
+  assert(
+    jobKey({ company: '某科技', title: '前端开发', city: '上海' }) !==
+      jobKey({ company: '某科技', title: '前端开发', city: '北京' }),
+    '归一化判重键区分不同城市',
+  )
+  assert(
+    jobKey({ source_id: 's', external_id: 'x1', company: 'a', title: 'b' }) === 'x:s:x1',
+    '有外部 id 时优先用它判重',
+  )
+
+  const draftFromJob = jobToApplicationDraft(
+    {
+      id: 'j1',
+      title: '后端开发工程师',
+      company: '某科技',
+      source_id: 'svc',
+      city: '北京',
+      salary: '20-35K',
+      job_type: '校招',
+      deadline: '2026-10-01',
+      url: 'https://example.com/j/1',
+      jd: 'JD 正文',
+      tags: ['Go'],
+      company_tags: [],
+      starred: false,
+      created_at: 'ts',
+      updated_at: 'ts',
+    },
+    'backlog',
+  )
+  assert(draftFromJob.status === 'backlog' && draftFromJob.title === '后端开发工程师', '岗位转投递：落首列并带岗位名')
+  assert(draftFromJob.channel === 'svc' && draftFromJob.jd === 'JD 正文', '岗位转投递：来源与 JD 透传')
+  assert(/城市：北京/.test(draftFromJob.notes) && /截止：2026-10-01/.test(draftFromJob.notes), '岗位转投递：城市/截止写入备注')
+
   console.log('== server: 数据层 / AI 防护 ==')
   const { initSchema } = await import('../server/src/db.ts')
   const { upsertProfile, getProfile } = await import('../server/src/profile.ts')

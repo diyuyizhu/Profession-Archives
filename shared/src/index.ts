@@ -486,6 +486,57 @@ export interface ApplicationStats {
 }
 
 /* ════════════════════════════════════════════════════════════
+   岗位市场领域（模块 G）类型契约 —— 岗位独立于投递存在，可筛选比较后再决定投不投。
+   来源与抓取解耦：本应用不内置爬虫，来源见 shared/job.ts 的 JobSourceConfig。
+   ════════════════════════════════════════════════════════════ */
+
+/** 岗位（岗位市场的一条记录） */
+export interface JobPosting {
+  id: string
+  /** 岗位名称 */
+  title: string
+  company: string
+  /** 来源 id（对应 JobSourceConfig.id） */
+  source_id: string
+  /** 来源内的唯一 id（外部服务提供时用于精确去重） */
+  external_id?: string
+  url?: string
+  city?: string
+  salary?: string
+  /** 学历要求（如 本科 / 硕士 / 不限） */
+  education?: string
+  /** 经验要求（如 应届 / 1-3 年） */
+  experience?: string
+  /** 岗位类型（校招 / 实习 / 社招） */
+  job_type?: string
+  /** JD 全文 */
+  jd?: string
+  /** 岗位标签 */
+  tags: string[]
+  /** 公司性质标签（央企 / 国企 / 上市 / 规模…），内置名单 + 手动维护 */
+  company_tags: string[]
+  /** 收藏 / 关注 */
+  starred: boolean
+  /** 已转入投递看板时记录投递 id（双向关联，避免重复转入） */
+  application_id?: string
+  /** AI 人岗匹配分 0–100 */
+  match_score?: number
+  /** 匹配理由（AI 给出的一句话） */
+  match_reason?: string
+  /** 发布时间（ISO 日期） */
+  posted_at?: string
+  /** 截止时间（ISO 日期） */
+  deadline?: string
+  /** 自定义属性值（与投递同一套多维表格机制） */
+  properties?: PropertyValues
+  created_at: string
+  updated_at: string
+}
+
+/** 创建 / 更新岗位载荷 */
+export type JobPayload = Omit<JobPosting, 'id' | 'created_at' | 'updated_at'>
+
+/* ════════════════════════════════════════════════════════════
    面试工具 / 投递归档领域（模块 C/D）类型契约
    ════════════════════════════════════════════════════════════ */
 

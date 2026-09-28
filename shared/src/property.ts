@@ -11,7 +11,7 @@
  * 字段引用约定：内置字段用其键名（如 `company`），自定义属性用属性 id（`prop_*`），
  * 二者前缀天然不冲突。
  */
-import type { Application, ApplicationStatus, PropertyDef, PropertyType, PropertyValue } from './index.js'
+import type { Application, ApplicationStatus, PropertyDef, PropertyType, PropertyValue, PropertyValues } from './index.js'
 
 /** 字段取值形态：决定可用运算符与比较方式 */
 export type FieldKind = 'text' | 'number' | 'date' | 'boolean' | 'tags' | 'column'
@@ -90,10 +90,16 @@ export const BUILTIN_FIELDS: ResolvedField[] = [
 /** 默认显示的列（其余内置字段可在「列」菜单里打开） */
 export const DEFAULT_VISIBLE_FIELDS = ['title', 'company', 'status', 'channel', 'applied_at', 'importance', 'tags']
 
-/** 内置字段 + 自定义属性 → 可选字段列表 */
-export function resolveFields(properties: PropertyDef[]): ResolvedField[] {
+/**
+ * 内置字段 + 自定义属性 → 可选字段列表。
+ * \`builtins\` 可换成别的实体内置字段表（岗位见 shared/job.ts 的 JOB_BUILTIN_FIELDS）。
+ */
+export function resolveFields(
+  properties: PropertyDef[],
+  builtins: ResolvedField[] = BUILTIN_FIELDS,
+): ResolvedField[] {
   return [
-    ...BUILTIN_FIELDS,
+    ...builtins,
     ...properties.map((p) => ({
       key: p.id,
       name: p.name,
@@ -105,14 +111,26 @@ export function resolveFields(properties: PropertyDef[]): ResolvedField[] {
   ]
 }
 
-export function findField(properties: PropertyDef[], key: string): ResolvedField | undefined {
-  return resolveFields(properties).find((f) => f.key === key)
+export function findField(
+  properties: PropertyDef[],
+  key: string,
+  builtins: ResolvedField[] = BUILTIN_FIELDS,
+): ResolvedField | undefined {
+  return resolveFields(properties, builtins).find((f) => f.key === key)
 }
 
-/** 取字段值（自定义属性从 properties 里取，内置字段取 Application 自身字段） */
-export function getFieldValue(app: Application, key: string): PropertyValue {
-  if (key.startsWith('prop_')) return app.properties?.[key]
-  const raw = (app as unknown as Record<string, unknown>)[key]
+/**
+ * 可承载字段的记录：投递（Application）与岗位（JobPosting）都满足这个最小结构。
+ * 字段求值 / 筛选 / 排序只依赖它，于是同一套「多维表格」能力可复用到多个实体。
+ */
+export interface FieldBearing {
+  properties?: PropertyValues
+}
+
+/** 取字段值（自定义属性从 properties 里取，内置字段取记录自身字段） */
+export function getFieldValue(record: FieldBearing, key: string): PropertyValue {
+  if (key.startsWith('prop_')) return record.properties?.[key]
+  const raw = (record as unknown as Record<string, unknown>)[key]
   if (raw === undefined || raw === null) return undefined
   if (Array.isArray(raw)) return raw.filter((v): v is string => typeof v === 'string')
   if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') return raw
@@ -215,8 +233,8 @@ export function emptyFilter(): FilterGroup {
 }
 
 /** 单条条件匹配 */
-export function matchCondition(app: Application, cond: FilterCondition): boolean {
-  const raw = getFieldValue(app, cond.field)
+export function matchCondition(record: FieldBearing, cond: FilterCondition): boolean {
+  const raw = getFieldValue(record, cond.field)
   const text = raw === undefined || raw === null ? '' : Array.isArray(raw) ? raw.join(' ') : String(raw)
   const needle = (cond.value ?? '').trim()
   const lower = text.toLowerCase()
@@ -269,9 +287,9 @@ export function matchCondition(app: Application, cond: FilterCondition): boolean
 }
 
 /** 整组筛选（空条件视为通过） */
-export function matchesFilter(app: Application, group: FilterGroup | undefined): boolean {
+export function matchesFilter(record: FieldBearing, group: FilterGroup | undefined): boolean {
   if (!group || !group.conditions.length) return true
-  const results = group.conditions.map((c) => matchCondition(app, c))
+  const results = group.conditions.map((c) => matchCondition(record, c))
   return group.op === 'and' ? results.every(Boolean) : results.some(Boolean)
 }
 
@@ -289,10 +307,10 @@ export interface SortRule {
   desc: boolean
 }
 
-/** 按字段比较两个投递（空值恒排最后） */
+/** 按字段比较两条记录（空值恒排最后） */
 export function compareField(
-  a: Application,
-  b: Application,
+  a: FieldBearing,
+  b: FieldBearing,
   rule: SortRule,
 ): number {
   const va = getFieldValue(a, rule.field)
@@ -318,12 +336,12 @@ export function compareField(
   return rule.desc ? -diff : diff
 }
 
-/** 多级排序（按 rules 顺序稳定排序） */
-export function sortApplications(
-  apps: Application[],
+/** 多级排序（按 rules 顺序稳定排序；对投递与岗位通用） */
+export function sortApplications<T extends FieldBearing>(
+  apps: T[],
   rules: SortRule[],
-  fallback?: (a: Application, b: Application) => number,
-): Application[] {
+  fallback?: (a: T, b: T) => number,
+): T[] {
   const active = rules.filter((r) => r.field)
   const list = [...apps]
   list.sort((a, b) => {

@@ -11,6 +11,7 @@
     "./application": "./src/application.ts",
     "./board": "./src/board.ts",
     "./property": "./src/property.ts",
+    "./job": "./src/job.ts",
     "./import": "./src/import.ts",
     "./interview": "./src/interview.ts",
     "./knowledge": "./src/knowledge.ts",
