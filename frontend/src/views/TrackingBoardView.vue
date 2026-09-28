@@ -1,24 +1,21 @@
 <script setup lang="ts">
 /**
  * 投递看板（B1）：看板 / 多维表格 / 全流程三种视图。
- * - 表格视图是 Notion 式多维表格：自定义属性、条件筛选、排序、可保存多套视图，
- *   每条记录点进独立记录页（ApplicationDetailView）
- * - 列可自定义：拖拽排序、改名、改角色（进行中/成功/失败/归档）、增删
- * - 删列时处置列内卡片：全部迁移 / 逐卡指定 / 一并删除
- * - 筛选：关键词 / 渠道 / 标签分类；排序：更新时间 / 投递时间 / 重要性 / 标题
- * - 「呈现设置」选择视图、默认排序、卡片显示字段（需求：呈现方式可配置）
- * - 点卡片进入投递详情档案（连接面试 / 复盘 / 归档）
- * - 操作：推进、移动到任意列、编辑、删除
+ *
+ * 分工（避免同一份数据出现两个修改入口）：
+ * - **看板 / 全流程 = 只读展示**：只保留「点开记录」导航；推进、改列、编辑、删除都不在这里
+ * - **表格 = 编辑主场**：自定义属性、内置字段就地编辑、行选择批量操作、表内新增
+ * - **记录页（ApplicationDetailView）= 单条深度编辑**：全字段 + 面试 / 复盘 / 归档
+ * - 看板列本身仍可配置（增删 / 改名 / 角色 / 拖拽排序）——那是看板结构，不是记录内容
  */
 import type {
   Application,
-  ApplicationPayload,
   ApplicationStatus,
   BoardColumn,
   BoardRole,
   PropertyType,
 } from '@pa/shared'
-import { groupByStatus, nextStage, statusMeta } from '@pa/shared/application'
+import { groupByStatus, statusMeta } from '@pa/shared/application'
 import { COLUMN_PRESETS, ROLE_LABELS } from '@pa/shared/board'
 import {
   DEFAULT_VISIBLE_FIELDS,
@@ -35,22 +32,19 @@ import {
   type ResolvedField,
   type SortRule,
 } from '@pa/shared/property'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import ApplicationEditModal from '@/components/application/ApplicationEditModal.vue'
 import BridgeSyncPanel from '@/components/BridgeSyncPanel.vue'
 import Modal from '@/components/Modal.vue'
 import ModuleTabs, { type ModuleTab } from '@/components/ModuleTabs.vue'
 import PageHeader from '@/components/PageHeader.vue'
-import { generateResume } from '@/lib/aiClient'
-import { transitionTargets, useApplicationStore } from '@/stores/application'
+import BuiltinCell from '@/components/property/BuiltinCell.vue'
+import PropertyCell from '@/components/property/PropertyCell.vue'
+import { useApplicationStore } from '@/stores/application'
 import { useArchivesStore } from '@/stores/archives'
 import { FIELD_LABELS, useBoardPrefsStore } from '@/stores/boardPrefs'
 import { useInterviewStore } from '@/stores/interview'
-import { useProfileStore } from '@/stores/profile'
-import BuiltinCell from '@/components/property/BuiltinCell.vue'
-import PropertyCell from '@/components/property/PropertyCell.vue'
 import { usePropertiesStore } from '@/stores/properties'
 import { useQuestionBankStore } from '@/stores/questionBank'
 import { useResumeTreeStore } from '@/stores/resumeTree'
@@ -60,7 +54,6 @@ const propsStore = usePropertiesStore()
 const prefsStore = useBoardPrefsStore()
 const prefs = prefsStore.prefs
 const router = useRouter()
-const profileStore = useProfileStore()
 const resumeTree = useResumeTreeStore()
 
 /** 模块内 Tab */
@@ -606,110 +599,11 @@ function openDetail(id: string): void {
   router.push(`/tracking/detail/${id}`)
 }
 
-/** 当前打开的「标记」菜单 id 与其按钮位置 */
-const openMenuId = ref<string | null>(null)
-const menuPos = ref<{ top: number; left: number }>({ top: 0, left: 0 })
-const menuApp = computed<Application | null>(() => {
-  if (!openMenuId.value) return null
-  return store.applications.find((a) => a.id === openMenuId.value) ?? null
-})
-
-const menuTargets = computed(() => {
-  const app = menuApp.value
-  if (!app) return []
-  return transitionTargets(app.status)
-})
-
-/** 正在编辑的投递（null = 不显示弹窗） */
-const editing = ref<Application | null>(null)
-
-function canAdvance(app: Application): boolean {
-  return nextStage(app.status) !== null
-}
-
-/** 是否失败列（选中它时提示填写拒绝原因） */
-function isFailureTarget(id: ApplicationStatus): boolean {
-  return store.columns.find((c) => c.id === id)?.role === 'failure'
-}
-
-function closeMenu(): void {
-  openMenuId.value = null
-}
-
-function toggleMenu(app: Application, event: MouseEvent): void {
-  if (openMenuId.value === app.id) {
-    closeMenu()
-    return
-  }
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  menuPos.value = { top: rect.bottom + 6, left: Math.max(8, rect.right - 150) }
-  openMenuId.value = app.id
-}
-
-/** 状态操作统一 catch：localStorage 失败时提示（内存已变但未持久化，刷新回退） */
-function safeStatusAction(action: () => boolean): void {
-  try {
-    action()
-  } catch {
-    window.alert('保存失败：本地存储不可用或已满')
-  }
-  closeMenu()
-}
-
-function onAdvance(app: Application): void {
-  safeStatusAction(() => store.advance(app.id))
-}
-
-/* ── AI 特化简历（backlog 阶段，投递前） ── */
-const specializing = ref<string | null>(null)
-const specializeMsg = ref('')
-
-async function specializeResume(app: Application): Promise<void> {
-  if (specializing.value) return
-  const jd = app.jd?.trim()
-  if (!jd) {
-    specializeMsg.value = '该投递没有 JD，请先在详情页补充岗位描述'
-    window.setTimeout(() => (specializeMsg.value = ''), 3200)
-    return
-  }
-  // 去重：同一投递只生成一份特化简历（避免重复节点）
-  if (resumeTree.getByApplication(app.id)) {
-    specializeMsg.value = '该投递已有特化简历，可到「简历」页查看或删除后重新生成'
-    window.setTimeout(() => (specializeMsg.value = ''), 3200)
-    return
-  }
-  specializing.value = app.id
-  specializeMsg.value = ''
-  try {
-    const profileText = JSON.stringify(profileStore.profile, null, 2)
-    const md = await generateResume(jd, profileText)
-    resumeTree.addNode({
-      title: `特化-${app.company || '未知公司'}-${app.title || '岗位'}`,
-      parent_id: resumeTree.baseResume?.id ?? null,
-      kind: 'specialized',
-      application_id: app.id,
-      content_md: md,
-      jd: jd.slice(0, 200),
-    })
-    specializeMsg.value = `已生成特化简历「${app.title || '岗位'}」，可在「简历」页查看`
-    window.setTimeout(() => (specializeMsg.value = ''), 4000)
-  } catch (e) {
-    specializeMsg.value = e instanceof Error ? e.message : 'AI 特化失败'
-    window.setTimeout(() => (specializeMsg.value = ''), 4000)
-  } finally {
-    specializing.value = null
-  }
-}
-
-function onTerminal(app: Application, to: ApplicationStatus): void {
-  let reason: string | undefined
-  if (isFailureTarget(to)) {
-    const input = window.prompt(`标记「${app.company} · ${app.title}」为拒绝。失败原因？`, app.reject_reason ?? '')
-    if (input === null) return
-    reason = input
-  }
-  safeStatusAction(() => store.transition(app.id, to, undefined, reason))
-}
+/**
+ * 看板 / 全流程 = 只读展示。
+ * 推进、改列、编辑、删除等内容修改统一收敛到「表格」视图与记录页（记录详情），
+ * 这里只保留「点开记录」这一条导航路径，避免同一份数据有两个修改入口。
+ */
 
 /** 卡片被真正删除时，清理其关联数据（面试记录 / 题库 / 归档） */
 function cleanupApplicationData(app: Application): void {
@@ -721,33 +615,6 @@ function cleanupApplicationData(app: Application): void {
   }
   interviewStore.removeByApplication(app.id)
   archives.removeByApplication(app.id) // 清理孤儿归档（录制/附件）
-}
-
-function onRemove(app: Application): void {
-  if (!window.confirm(`删除「${app.company} · ${app.title}」及其全部事件？`)) return
-  cleanupApplicationData(app)
-  store.removeApplication(app.id)
-  closeMenu()
-}
-
-function onSaveEdit(payload: ApplicationPayload): void {
-  if (editing.value) {
-    store.updateApplication(editing.value.id, {
-      company: payload.company,
-      title: payload.title,
-      channel: payload.channel,
-      url: payload.url,
-      jd: payload.jd,
-      tags: payload.tags,
-      notes: payload.notes,
-      total_rounds: payload.total_rounds,
-      importance: payload.importance,
-      email_thread: payload.email_thread,
-      reject_reason: payload.reject_reason,
-      applied_at: payload.applied_at,
-    })
-  }
-  editing.value = null
 }
 
 /* ── 看板列管理（B1）：排序 / 改名 / 角色 / 增删 ── */
@@ -900,25 +767,6 @@ function confirmRemoveColumn(): void {
   }
   removingColumn.value = null
 }
-
-/* ── 菜单关闭治理 ── */
-function onGlobalPointerDown(e: PointerEvent): void {
-  if (!openMenuId.value) return
-  const target = e.target as HTMLElement
-  if (target.closest('[data-menu-root]') || target.closest('[data-menu-trigger]')) return
-  closeMenu()
-}
-function onGlobalKeydown(e: KeyboardEvent): void {
-  if (e.key === 'Escape') closeMenu()
-}
-onMounted(() => {
-  document.addEventListener('pointerdown', onGlobalPointerDown)
-  document.addEventListener('keydown', onGlobalKeydown)
-})
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onGlobalPointerDown)
-  document.removeEventListener('keydown', onGlobalKeydown)
-})
 </script>
 
 <template>
@@ -931,15 +779,6 @@ onBeforeUnmount(() => {
       </PageHeader>
 
       <ModuleTabs :tabs="tabs" />
-
-      <!-- AI 特化简历提示 -->
-      <div
-        v-if="specializeMsg"
-        class="card-glass mb-4 flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] text-neutral-500"
-      >
-        <span>{{ specializeMsg }}</span>
-        <button class="shrink-0 text-neutral-400 hover:text-neutral-900" @click="specializeMsg = ''">✕</button>
-      </div>
 
       <!-- 同步采集数据（插件采集 → 看板） -->
       <section class="card-glass mb-5 p-3">
@@ -986,6 +825,24 @@ onBeforeUnmount(() => {
           >
             清除筛选
           </button>
+        </div>
+
+        <!-- 视图分工提示：看板 / 全流程只读，编辑在表格与记录页 -->
+        <div
+          v-if="prefs.viewMode !== 'list'"
+          class="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-[11.5px] text-neutral-500"
+        >
+          <span class="font-medium text-neutral-700">
+            {{ prefs.viewMode === 'board' ? '看板' : '全流程' }}为只读展示
+          </span>
+          <span>改内容请切到</span>
+          <button
+            class="rounded border border-neutral-300 px-1.5 py-0.5 text-neutral-700 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+            @click="prefsStore.set({ viewMode: 'list' })"
+          >
+            表格
+          </button>
+          <span>或点开记录页；看板列的增删改仍在此视图</span>
         </div>
 
         <!-- 标签分类 -->
@@ -1185,59 +1042,14 @@ onBeforeUnmount(() => {
                   {{ app.notes }}
                 </p>
 
-                <!-- 操作 -->
-                <div class="mt-3 flex items-center justify-between border-t border-neutral-200 pt-2.5" @click.stop>
-                  <button
-                    v-if="canAdvance(app)"
-                    class="text-[12px] font-medium text-neutral-900 transition-colors hover:underline"
-                    @click="onAdvance(app)"
-                  >
-                    推进 ▸
-                  </button>
-                  <span v-else class="text-[12px] text-neutral-300">
-                    {{ statusMeta(app.status, app.total_rounds).terminal ? '已结束' : '最后一轮 · 待定' }}
+                <!-- 只读页脚：看板不做内容修改（推进 / 编辑 / 删除都在「表格」视图与记录页） -->
+                <div class="mt-3 flex items-center justify-between border-t border-neutral-200 pt-2.5">
+                  <span class="text-[11px] text-neutral-300">只读</span>
+                  <span class="flex items-center gap-2 text-[11px] text-neutral-400">
+                    <span v-if="resumeTree.getByApplication(app.id)" title="已关联简历">简历 ✓</span>
+                    <span v-if="statusMeta(app.status).terminal">已结束</span>
+                    <span>详情 →</span>
                   </span>
-
-                  <div class="relative flex items-center gap-2">
-                    <button
-                      v-if="resumeTree.getByApplication(app.id)"
-                      class="rounded px-1.5 py-0.5 text-[11px] text-neutral-600 transition-colors hover:underline"
-                      title="已关联简历，点击查看"
-                      @click="router.push('/resume')"
-                    >
-                      简历 ✓
-                    </button>
-                    <button
-                      v-if="app.status === store.firstColumnId"
-                      class="rounded px-1.5 py-0.5 text-[11px] text-neutral-700 transition-colors hover:underline"
-                      :disabled="specializing !== null"
-                      @click="specializeResume(app)"
-                    >
-                      {{ specializing === app.id ? '特化中…' : '✨ AI 特化' }}
-                    </button>
-                    <button
-                      class="rounded px-1.5 py-0.5 text-[11px] text-neutral-400 transition-colors hover:text-neutral-900"
-                      @click="editing = app"
-                    >
-                      编辑
-                    </button>
-                    <button
-                      class="rounded px-1.5 py-0.5 text-[11px] text-neutral-400 transition-colors hover:text-red-600"
-                      @click="onRemove(app)"
-                    >
-                      删除
-                    </button>
-                    <button
-                      v-if="!statusMeta(app.status, app.total_rounds).terminal"
-                      data-menu-trigger
-                      aria-haspopup="menu"
-                      :aria-expanded="openMenuId === app.id"
-                      class="rounded border border-neutral-300 px-2 py-0.5 text-[11px] text-neutral-500 transition-colors hover:border-neutral-900 hover:text-neutral-900"
-                      @click="toggleMenu(app, $event)"
-                    >
-                      标记 ▾
-                    </button>
-                  </div>
                 </div>
               </div>
 
@@ -1601,32 +1413,6 @@ onBeforeUnmount(() => {
         </div>
       </section>
     </div>
-
-    <!-- 编辑弹窗 -->
-    <ApplicationEditModal v-if="editing" :app="editing" @close="editing = null" @save="onSaveEdit" />
-
-    <!-- 「标记」菜单 -->
-    <Teleport to="body">
-      <div
-        v-if="menuApp"
-        data-menu-root
-        role="menu"
-        class="fixed z-50 w-[150px] overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-lg"
-        :style="{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }"
-      >
-        <button
-          v-for="target in menuTargets"
-          :key="target"
-          role="menuitem"
-          class="block w-full px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-neutral-100"
-          :class="statusMeta(target, menuApp!.total_rounds).text"
-          @click="onTerminal(menuApp, target)"
-        >
-          {{ statusMeta(target, menuApp!.total_rounds).label }}
-          <span class="ml-1 text-[10.5px] text-neutral-400">{{ statusMeta(target, menuApp!.total_rounds).desc }}</span>
-        </button>
-      </div>
-    </Teleport>
 
     <!-- 呈现设置 -->
     <Modal v-if="showSettings" title="看板呈现设置" max-width="max-w-md" @close="showSettings = false">
