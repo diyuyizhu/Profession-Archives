@@ -1,6 +1,33 @@
-# Profession-Archives v0.2.4-beta · 生涯大脑
+# Profession-Archives v0.2.5-beta · 生涯大脑
 
 > 本地优先的个人求职全流程管理工具 —— 从岗位采集、简历生成、投递看板、面试复盘到 offer 归档，一条龙自己在本地搞定，数据不出本机。
+
+## v0.2.5 更新（岗位市场 + 视图分工）
+
+### 新增：岗位市场（模块 G）
+
+先攒岗位、再决定投不投 —— 投递看板管"已经投出去的"，岗位市场管"还没投的"。
+
+- **抓取与主程序分离**：本应用**不内置爬虫**，只提供「来源适配 + 岗位库」。来源分四类：
+  - 手动录入
+  - 浏览器插件采集（复用你已登录的会话，不碰服务端反爬）
+  - **外部抓取服务**（你自己跑的独立进程，填地址即可接入）
+  - 站点入口（求职方舟、国聘等聚合站作为「来源之一」）
+- **外部服务协议**（实现这个就能被接进来）：
+  `GET {endpoint}/jobs?query=&city=&page=&limit=` → `{"jobs":[{title,company,city,salary,url,jd,tags,…}]}`
+  请求由桌面端本地桥代理转发（避开 webview 的 CORS 限制），失败原因如实回报
+- **岗位库**：表格视图、收藏、行选择批量删除、快捷筛选（关键词 / 来源 / 城市 / 类型 / 只看收藏）、
+  **自定义属性列**（和投递同一套多维表格机制）、岗位详情弹窗
+- **转入投递**：一键在看板建一条记录（落首列），并回写双向关联，防重复转入；
+  城市 / 薪资 / 类型 / 截止时间自动写进备注
+- 侧栏新增「岗位市场」（代码 G）
+
+### 调整：看板 / 全流程改为只读展示
+
+- 看板卡片上的 **推进 / 标记 / AI特化 / 编辑 / 删除** 全部移除，只保留「详情 →」
+- 编辑入口收敛为两条：**表格视图**（批量 / 快速就地编辑）+ **记录页**（单条深度编辑）
+- 看板**列**的增删改（改名 / 角色 / 排序 / 删除）仍在看板视图 —— 那是看板结构，不是记录内容
+- 顶部加提示条，一键切到表格
 
 ## v0.2.4 更新（AI 按官方文档对齐）
 
@@ -77,24 +104,24 @@
 
 ```text
 release/
-├── Profession-Archives-v0.2.4-win-x64.exe / .zip     ← 最新版（绿色版）
-├── Profession-Archives_0.2.4_x64-setup.exe / .msi    ← 最新版安装包
-├── Profession-Archives-extension-0.1.1-chrome/ + .zip ← 最新版插件
+├── Profession-Archives-v0.2.5-win-x64.exe / .zip     ← 最新版（绿色版）
+├── Profession-Archives_0.2.5_x64-setup.exe / .msi    ← 最新版安装包
+├── Profession-Archives-extension-0.1.1-chrome/ + .zip ← 最新版插件（本版未改动）
 ├── Profession-Archives-extension-0.1.1.zip           ← 合并包（插件 + exe + 说明）
 ├── 历史版本/                                          ← 旧版归档（本机留存，不入 git）
-│   ├── v0.2.0 / v0.2.1 / v0.2.2 / v0.2.3 的 exe、zip、setup.exe、msi
+│   ├── v0.2.0 / v0.2.1 / v0.2.2 / v0.2.3 / v0.2.4 的 exe、zip、setup.exe、msi
 │   └── extension-0.1.0（含更早的无版本目录）
 └── README.md                                          ← 本文件
 ```
 
-> 归档约占 170 MB。确认不再需要旧版时，直接删掉 `历史版本/` 即可，不影响最新版。
+> 归档约占 217 MB。确认不再需要旧版时，直接删掉 `历史版本/` 即可，不影响最新版。
 
 ## 怎么用
 
 ### 第一步：运行
 
-- 下载解压后，**双击 `Profession-Archives-v0.2.4-win-x64.exe`**，绿色免安装，直接跑。
-- 也可用安装包：`Profession-Archives_0.2.4_x64-setup.exe`（NSIS）或 `Profession-Archives_0.2.4_x64_en-US.msi`。
+- 下载解压后，**双击 `Profession-Archives-v0.2.5-win-x64.exe`**，绿色免安装，直接跑。
+- 也可用安装包：`Profession-Archives_0.2.5_x64-setup.exe`（NSIS）或 `Profession-Archives_0.2.5_x64_en-US.msi`。
 - 首次打开是空的 —— 没有预设数据，从零开始。
 - 需要旧版请到 `历史版本/` 取（文件名带版本号）。
 
