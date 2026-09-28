@@ -109,12 +109,20 @@ release/
 ├── Profession-Archives-extension-0.1.1-chrome/ + .zip ← 最新版插件（本版未改动）
 ├── Profession-Archives-extension-0.1.1.zip           ← 合并包（插件 + exe + 说明）
 ├── 历史版本/                                          ← 旧版归档（本机留存，不入 git）
-│   ├── v0.2.0 / v0.2.1 / v0.2.2 / v0.2.3 / v0.2.4 的 exe、zip、setup.exe、msi
-│   └── extension-0.1.0（含更早的无版本目录）
+│   ├── v0.2.0/   exe + zip + 合并包（该版本发布时的完整组合）
+│   ├── v0.2.1/   exe + zip + setup.exe + msi
+│   ├── v0.2.2/   exe + zip + setup.exe + msi
+│   ├── v0.2.3/   exe + zip + setup.exe + msi
+│   ├── v0.2.4/   exe + zip + setup.exe + msi
+│   └── extension-0.1.0/   插件目录与 zip（两份同版本号但内容不同的构建，都保留）
 └── README.md                                          ← 本文件
 ```
 
-> 归档约占 217 MB。确认不再需要旧版时，直接删掉 `历史版本/` 即可，不影响最新版。
+> 归档约占 217 MB。确认不再需要某个版本时，直接删掉对应的 `vX.Y.Z/` 即可，不影响最新版。
+>
+> 命名约定：桌面端 `v<版本>`，插件 `extension-<版本>`（插件与桌面端各自独立版本号，
+> 只有 `v0.2.0/` 里那个 `Profession-Archives-extension-0.1.0.zip` 例外 —— 它名字看着像插件包，
+> 其实是**当时含 exe 的合并包**，所以归在 v0.2.0 下）。
 
 ## 怎么用
 
