@@ -229,13 +229,17 @@ pub fn run() {
                 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
                 _app.dialog()
                     .message(
-                        "窗口没能创建成功（WebView2 环境初始化失败），所以看不到界面。\n\n\
-                         最常见原因：之前用「管理员身份」运行过本程序 —— WebView2 的数据目录\
-                         不允许在管理员与普通身份之间共用，残留的锁会让普通身份启动失败。\n\
-                         处理：任务管理器结束所有 Profession-Archives 与 msedgewebview2 进程，\
-                         删除目录 %LOCALAPPDATA%\\com.professionarchives.app\\EBWebView，\
-                         再用普通身份打开（不要右键以管理员身份运行）。\n\n\
-                         另一个可能：WebView2 运行时损坏 —— 重装 Microsoft Edge WebView2 Runtime。\n\n\
+                        "界面没能创建成功（WebView2 环境初始化失败），所以只看到窗口一闪。\n\
+                         这是运行环境问题，不是程序本身的故障 —— 排查顺序：\n\n\
+                         1. 修复 WebView2 运行时（最常见）：\n\
+                         　 到微软官网下载「Microsoft Edge WebView2 Runtime」并安装（选修复）。\n\n\
+                         2. 换个 Windows 账户试一次：新建一个本地账户登录后运行本程序。\n\
+                         　 新账户能用 = 你原来的用户配置损坏，需要重建账户配置；\n\
+                         　 新账户也不行 = 系统级问题，接着做第 3 步。\n\n\
+                         3. 修复系统组件（管理员 PowerShell）：\n\
+                         　 sfc /scannow\n\
+                         　 DISM /Online /Cleanup-Image /RestoreHealth\n\n\
+                         临时可用：右键「以管理员身份运行」通常能正常打开。\n\n\
                          详细日志：%APPDATA%\\com.professionarchives.app\\startup.log",
                     )
                     .title("Profession-Archives 启动异常")
