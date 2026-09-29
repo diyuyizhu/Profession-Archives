@@ -19,6 +19,16 @@ use tauri::{Manager, State};
 mod bridge;
 use bridge::BridgeHandle;
 
+/// 启动诊断日志（追加写入 app_data_dir/startup.log）。
+///
+/// 为什么需要：release 版是 windows 子系统，没有控制台，双击启动时 stderr 无处可见。
+/// 一旦出现"窗口闪一下就没了"这类问题，没有日志就只能靠猜 —— 这个文件是唯一的现场证据。
+fn append_log(path: &std::path::Path, msg: &str) {
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(f, "{msg}");
+    }
+}
+
 mod ai;
 
 /// 文件文本提取（PDF / DOCX → 纯文本），供桥路由 /api/import/extract-text 使用
@@ -172,28 +182,80 @@ pub fn run() {
         .setup(|_app| {
             _app.manage(RecordingState(Mutex::new(None)));
 
+            let app_data = _app
+                .path()
+                .app_data_dir()
+                .unwrap_or_else(|_| std::path::PathBuf::from("."));
+            let _ = std::fs::create_dir_all(&app_data);
+
+            // 每次启动重写诊断日志：窗口/桥的启动过程都留痕，便于排查"窗口没出现"
+            let log_path = app_data.join("startup.log");
+            let _ = std::fs::remove_file(&log_path);
+            append_log(&log_path, "[startup] --- app start ---");
+
             // 启动本地桥 HTTP 服务（插件通信通道）
-            let bridge_handle = {
-                let app_data = _app
-                    .path()
-                    .app_data_dir()
-                    .unwrap_or_else(|_| std::path::PathBuf::from("."));
-                let _ = std::fs::create_dir_all(&app_data);
-                match BridgeHandle::start(app_data) {
-                    Ok(h) => Some(h),
-                    Err(e) => {
-                        eprintln!("[bridge] 启动失败（端口 8000 可能被占用）: {e}");
-                        None
-                    }
+            let bridge_handle = match BridgeHandle::start(app_data.clone()) {
+                Ok(h) => {
+                    append_log(&log_path, "[startup] bridge listening on 127.0.0.1:8000");
+                    Some(h)
+                }
+                Err(e) => {
+                    append_log(
+                        &log_path,
+                        &format!("[startup] bridge failed (port 8000 busy?): {e}"),
+                    );
+                    None
                 }
             };
             _app.manage(BridgeState(Mutex::new(bridge_handle)));
 
-            // 窗口关闭时停止桥服务
+            // 主窗口状态 + 事件序列（窗口闪退类问题的关键证据）
             let window = _app.get_webview_window("main").unwrap();
+            let visible = window.is_visible();
+            let size = window.outer_size();
+            let pos = window.outer_position();
+            append_log(
+                &log_path,
+                &format!("[startup] main window: visible={visible:?} size={size:?} pos={pos:?}"),
+            );
+
+            // 窗口查询失败 = WebView2 环境没建起来，窗口建完就被销毁：
+            // 界面永远不会出现，用户只看到"闪一下"。必须弹窗说清楚，不能静默消失。
+            if visible.is_err() {
+                append_log(
+                    &log_path,
+                    "[startup] window state query failed -> webview env broken",
+                );
+                use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+                _app.dialog()
+                    .message(
+                        "窗口没能创建成功（WebView2 环境初始化失败），所以看不到界面。\n\n\
+                         最常见原因：之前用「管理员身份」运行过本程序 —— WebView2 的数据目录\
+                         不允许在管理员与普通身份之间共用，残留的锁会让普通身份启动失败。\n\
+                         处理：任务管理器结束所有 Profession-Archives 与 msedgewebview2 进程，\
+                         删除目录 %LOCALAPPDATA%\\com.professionarchives.app\\EBWebView，\
+                         再用普通身份打开（不要右键以管理员身份运行）。\n\n\
+                         另一个可能：WebView2 运行时损坏 —— 重装 Microsoft Edge WebView2 Runtime。\n\n\
+                         详细日志：%APPDATA%\\com.professionarchives.app\\startup.log",
+                    )
+                    .title("Profession-Archives 启动异常")
+                    .kind(MessageDialogKind::Error)
+                    .show(|_| {});
+            }
+
+            let event_log = log_path.clone();
             window.on_window_event(move |event| {
-                if let tauri::WindowEvent::Destroyed = event {
-                    // bridge handle 会在 app 退出时随进程结束，不必手动释放
+                // 只记关键事件：Moved/Resized 会随拖动疯狂刷屏，把真正有用的信息淹掉
+                let key = matches!(
+                    event,
+                    tauri::WindowEvent::CloseRequested { .. }
+                        | tauri::WindowEvent::Destroyed
+                        | tauri::WindowEvent::Focused(_)
+                        | tauri::WindowEvent::ScaleFactorChanged { .. }
+                        | tauri::WindowEvent::ThemeChanged(_)
+                );
+                if key {
+                    append_log(&event_log, &format!("[startup] window event: {event:?}"));
                 }
             });
 
